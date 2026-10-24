@@ -351,7 +351,8 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     // --- Three.js Scene Variables ---
     var camera, scene, renderer, clock;
     var batsmanGroup, batPivot, batGroup, bladeMesh;
-    var rUpperArm, rForearm, lUpperArm, lForearm; // Batsman arm dynamic linkage
+    var rUpperArm, rForearm, lUpperArm, lForearm, rElbow, lElbow; // Batsman arm dynamic linkage
+    var lGloveGroup, rGloveGroup, lGloveAnchor, rGloveAnchor; // Pro batting gloves & IK targets
     var trailCoreLine, trailCoreGeo, trailRibbonMesh, trailRibbonGeo;
     var trailPositions = [], maxTrailPoints = 65;
     var impactLight, impactParticles = [], impactShockwave, sweetSpotIndicator;
@@ -993,6 +994,180 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       });
     }
 
+    // ═════════════════════════════════════════════════════════
+    // US-009: PRO BATTING GLOVES (Textbook 2-Handed 'V' Grip)
+    // ═════════════════════════════════════════════════════════
+    function buildProCricketGlove(isTopHand, gloveMat, skinMat) {
+      var gGroup = new THREE.Group();
+
+      var palmMat = new THREE.MeshStandardMaterial({ color: 0xF8FAFC, roughness: 0.88, metalness: 0.02 }); // Soft Pittards leather
+      var cuffMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, roughness: 0.95, metalness: 0.00 }); // Navy towel wristband
+      var trimMat = new THREE.MeshStandardMaterial({ color: 0x00C97B, roughness: 0.35, metalness: 0.20 }); // VectorBat Emerald trim
+
+      // 1. Elasticated Towel Wristband Cuff with Rubber Pull-Tab
+      var cuffGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.038, 16);
+      var cuff = new THREE.Mesh(cuffGeo, cuffMat);
+      cuff.position.y = 0.022;
+      cuff.castShadow = true;
+      gGroup.add(cuff);
+
+      var tabGeo = new THREE.BoxGeometry(0.012, 0.020, 0.008);
+      var tab = new THREE.Mesh(tabGeo, trimMat);
+      tab.position.set(0.026, 0.022, 0);
+      gGroup.add(tab);
+
+      // Wrist Anchor Group for Forearm IK targeting
+      var wristAnchor = new THREE.Group();
+      wristAnchor.position.set(0, 0.036, 0);
+      gGroup.add(wristAnchor);
+
+      // 2. Glove Dorsal High-Density Protective Foam Shield
+      var shieldGeo = new THREE.BoxGeometry(0.040, 0.052, 0.022);
+      var shield = new THREE.Mesh(shieldGeo, gloveMat);
+      if (isTopHand) {
+        // Top hand: knuckles face towards off-side / cover (+X / +Z)
+        shield.position.set(0.018, -0.010, 0.012);
+        shield.rotation.y = -0.45;
+      } else {
+        // Bottom hand: back of hand faces rearward / spine (-Z)
+        shield.position.set(0.012, -0.010, -0.018);
+        shield.rotation.y = -0.15;
+      }
+      shield.castShadow = true;
+      gGroup.add(shield);
+
+      // 3. Soft White Leather Palm Wrapping Handle
+      var palmGeo = new THREE.CylinderGeometry(0.021, 0.021, 0.050, 14, 1, true, 0, Math.PI * 1.35);
+      var palm = new THREE.Mesh(palmGeo, palmMat);
+      palm.position.y = -0.012;
+      palm.rotation.y = isTopHand ? 0.35 : -0.20;
+      gGroup.add(palm);
+
+      // 4. 4 Articulated Sausage Finger Rolls Curved Around Handle
+      var fingerY = [-0.030, -0.017, -0.004, 0.009];
+      var fingerAngle = [-0.35, -0.15, 0.05, 0.25];
+      for (var f = 0; f < 4; f++) {
+        var fy = fingerY[f];
+        var fa = fingerAngle[f];
+
+        // Knuckle sausage block
+        var r1Geo = new THREE.CylinderGeometry(0.0075, 0.0070, 0.018, 8);
+        var r1 = new THREE.Mesh(r1Geo, gloveMat);
+        r1.rotation.z = Math.PI / 2;
+        r1.rotation.y = fa;
+        r1.position.set(0.022 * Math.cos(fa), fy, 0.022 * Math.sin(fa));
+        r1.castShadow = true;
+        gGroup.add(r1);
+
+        // Curved fingertip wrap
+        var r2Geo = new THREE.CylinderGeometry(0.0065, 0.0060, 0.015, 8);
+        var r2 = new THREE.Mesh(r2Geo, gloveMat);
+        r2.rotation.z = Math.PI / 2;
+        r2.rotation.y = fa + 0.65;
+        r2.position.set(0.020 * Math.cos(fa + 0.65), fy, 0.020 * Math.sin(fa + 0.65));
+        r2.castShadow = true;
+        gGroup.add(r2);
+      }
+
+      // 5. Two-Piece Angled Thumb Guard Protection
+      var t1Geo = new THREE.BoxGeometry(0.014, 0.024, 0.014);
+      var t1 = new THREE.Mesh(t1Geo, gloveMat);
+      t1.position.set(-0.016, -0.006, isTopHand ? 0.018 : -0.015);
+      t1.rotation.y = isTopHand ? 0.55 : -0.55;
+      t1.castShadow = true;
+      gGroup.add(t1);
+
+      var t2Geo = new THREE.BoxGeometry(0.011, 0.018, 0.012);
+      var t2 = new THREE.Mesh(t2Geo, trimMat);
+      t2.position.set(-0.019, 0.012, isTopHand ? 0.014 : -0.012);
+      t2.castShadow = true;
+      gGroup.add(t2);
+
+      return { group: gGroup, anchor: wristAnchor };
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // US-009: 2-BONE ARM INVERSE KINEMATICS (IK)
+    // Mathematically pins shoulders -> elbows -> wrist cuffs
+    // ═════════════════════════════════════════════════════════
+    var _vLWorld = new THREE.Vector3();
+    var _vRWorld = new THREE.Vector3();
+    var _vLWristLocal = new THREE.Vector3();
+    var _vRWristLocal = new THREE.Vector3();
+    var _vLShoulder = new THREE.Vector3(0.042, 1.30, 0.305);
+    var _vRShoulder = new THREE.Vector3(-0.042, 1.30, -0.025);
+    var _vBoneDiff = new THREE.Vector3();
+    var _vBoneMid = new THREE.Vector3();
+    var _vBoneDir = new THREE.Vector3();
+    var _qBoneAlign = new THREE.Quaternion();
+    var _upArm = new THREE.Vector3(0, 1, 0);
+
+    function alignArmBone(boneMesh, pStart, pEnd) {
+      if (!boneMesh) return;
+      _vBoneDiff.subVectors(pEnd, pStart);
+      var len = _vBoneDiff.length();
+      if (len < 0.001) return;
+      _vBoneMid.addVectors(pStart, pEnd).multiplyScalar(0.5);
+      boneMesh.position.copy(_vBoneMid);
+      _vBoneDir.copy(_vBoneDiff).normalize();
+      _qBoneAlign.setFromUnitVectors(_upArm, _vBoneDir);
+      boneMesh.quaternion.copy(_qBoneAlign);
+      // Geometry base height is 1.0, so scaling by len sets height precisely to len!
+      boneMesh.scale.set(1, len, 1);
+    }
+
+    function updateBatsmanArmIK() {
+      if (!batsmanGroup || !lUpperArm || !lForearm || !rUpperArm || !rForearm || !lGloveAnchor || !rGloveAnchor) return;
+
+      // Ensure scene world matrices are updated
+      scene.updateMatrixWorld(true);
+
+      // Sample glove wrist anchors in world space
+      lGloveAnchor.getWorldPosition(_vLWorld);
+      rGloveAnchor.getWorldPosition(_vRWorld);
+
+      // Convert to batsmanGroup local frame
+      _vLWristLocal.copy(_vLWorld);
+      batsmanGroup.worldToLocal(_vLWristLocal);
+
+      _vRWristLocal.copy(_vRWorld);
+      batsmanGroup.worldToLocal(_vRWristLocal);
+
+      var L1 = 0.26, L2 = 0.24;
+
+      // 1. LEFT ARM (Front Arm: High Leading Elbow towards bowler)
+      var armVecL = new THREE.Vector3().subVectors(_vLWristLocal, _vLShoulder);
+      var dL = Math.max(0.12, Math.min(0.48, armVecL.length()));
+      var d1L = (L1 * L1 - L2 * L2 + dL * dL) / (2 * dL);
+      var hL = Math.sqrt(Math.max(0.001, L1 * L1 - d1L * d1L));
+
+      var uL = armVecL.clone().normalize();
+      var hintL = new THREE.Vector3(0.35, 0.40, 0.20);
+      var dotL = hintL.dot(uL);
+      var perpL = hintL.sub(uL.clone().multiplyScalar(dotL)).normalize();
+      var elbowL = _vLShoulder.clone().add(uL.clone().multiplyScalar(d1L)).add(perpL.multiplyScalar(hL));
+
+      alignArmBone(lUpperArm, _vLShoulder, elbowL);
+      if (lElbow) lElbow.position.copy(elbowL);
+      alignArmBone(lForearm, elbowL, _vLWristLocal);
+
+      // 2. RIGHT ARM (Rear Arm: Tucked close to ribs, guiding bottom handle)
+      var armVecR = new THREE.Vector3().subVectors(_vRWristLocal, _vRShoulder);
+      var dR = Math.max(0.12, Math.min(0.48, armVecR.length()));
+      var d1R = (L1 * L1 - L2 * L2 + dR * dR) / (2 * dR);
+      var hR = Math.sqrt(Math.max(0.001, L1 * L1 - d1R * d1R));
+
+      var uR = armVecR.clone().normalize();
+      var hintR = new THREE.Vector3(0.30, -0.25, -0.15);
+      var dotR = hintR.dot(uR);
+      var perpR = hintR.sub(uR.clone().multiplyScalar(dotR)).normalize();
+      var elbowR = _vRShoulder.clone().add(uR.clone().multiplyScalar(d1R)).add(perpR.multiplyScalar(hR));
+
+      alignArmBone(rUpperArm, _vRShoulder, elbowR);
+      if (rElbow) rElbow.position.copy(elbowR);
+      alignArmBone(rForearm, elbowR, _vRWristLocal);
+    }
+
     function buildBatsmanAndBat() {
       batsmanGroup = new THREE.Group();
       batsmanGroup.scale.set(1.0, 1.0, 1.0);
@@ -1190,38 +1365,34 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       faceMesh.scale.set(0.9, 1.05, 1.0);
       headGroup.add(faceMesh);
 
-      // ── ARMS & SHOULDERS (Textbook high-elbow cricket stance) ──
-      // Left arm (Front arm: high cocked elbow pointing towards bowler)
-      var lUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
-      lUpperArm = new THREE.Mesh(lUpperArmGeo, jerseyMat);
-      lUpperArm.position.set(0.04, 1.28, 0.28);
-      lUpperArm.rotation.x = 0.65; // High elbow pointing towards bowler
-      lUpperArm.rotation.z = -0.45;
+      // ── ARMS & SHOULDERS (Textbook high-elbow cricket stance with 2-bone IK) ──
+      var armGeo = new THREE.CylinderGeometry(0.040, 0.034, 1.0, 14);
+      var forearmGeo = new THREE.CylinderGeometry(0.034, 0.028, 1.0, 14);
+      var elbowGeo = new THREE.SphereGeometry(0.036, 12, 12);
+
+      // Left arm (Front arm: leads with high elbow pointing towards bowler)
+      lUpperArm = new THREE.Mesh(armGeo, jerseyMat);
       lUpperArm.castShadow = true;
       batsmanGroup.add(lUpperArm);
 
-      var lForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.25, 12);
-      lForearm = new THREE.Mesh(lForearmGeo, skinMat);
-      lForearm.position.set(0.08, 1.12, 0.20);
-      lForearm.rotation.x = -0.85;
-      lForearm.rotation.z = -0.65;
+      lElbow = new THREE.Mesh(elbowGeo, jerseyMat);
+      lElbow.castShadow = true;
+      batsmanGroup.add(lElbow);
+
+      lForearm = new THREE.Mesh(forearmGeo, skinMat);
       lForearm.castShadow = true;
       batsmanGroup.add(lForearm);
 
-      // Right arm (Rear arm: tucked in close to torso, guiding bottom of handle)
-      var rUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
-      rUpperArm = new THREE.Mesh(rUpperArmGeo, jerseyMat);
-      rUpperArm.position.set(-0.02, 1.25, 0.04);
-      rUpperArm.rotation.x = 0.25;
-      rUpperArm.rotation.z = -0.30;
+      // Right arm (Rear arm: tucked in close to ribs, guiding bottom handle)
+      rUpperArm = new THREE.Mesh(armGeo, jerseyMat);
       rUpperArm.castShadow = true;
       batsmanGroup.add(rUpperArm);
 
-      var rForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.25, 12);
-      rForearm = new THREE.Mesh(rForearmGeo, skinMat);
-      rForearm.position.set(0.06, 1.05, 0.10);
-      rForearm.rotation.x = -0.55;
-      rForearm.rotation.z = -0.75;
+      rElbow = new THREE.Mesh(elbowGeo, jerseyMat);
+      rElbow.castShadow = true;
+      batsmanGroup.add(rElbow);
+
+      rForearm = new THREE.Mesh(forearmGeo, skinMat);
       rForearm.castShadow = true;
       batsmanGroup.add(rForearm);
 
@@ -1269,17 +1440,17 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       }
 
       // Pro Cricket Batting Gloves (Two-handed textbook 'V' grip)
-      // Top Hand (Left hand, firm grip at top of handle)
-      var lGlove = new THREE.Mesh(new THREE.SphereGeometry(0.046, 14, 12), gloveMat);
-      lGlove.position.set(0, 0.22, 0.008);
-      lGlove.scale.set(1.15, 0.85, 1.0);
-      batGroup.add(lGlove);
+      var lGloveRes = buildProCricketGlove(true, gloveMat, skinMat);
+      lGloveGroup = lGloveRes.group;
+      lGloveAnchor = lGloveRes.anchor;
+      lGloveGroup.position.set(0, 0.20, 0);
+      batGroup.add(lGloveGroup);
 
-      // Bottom Hand (Right hand, relaxed control below left hand)
-      var rGlove = new THREE.Mesh(new THREE.SphereGeometry(0.046, 14, 12), gloveMat);
-      rGlove.position.set(0, 0.08, 0.008);
-      rGlove.scale.set(1.15, 0.85, 1.0);
-      batGroup.add(rGlove);
+      var rGloveRes = buildProCricketGlove(false, gloveMat, skinMat);
+      rGloveGroup = rGloveRes.group;
+      rGloveAnchor = rGloveRes.anchor;
+      rGloveGroup.position.set(0, 0.075, 0);
+      batGroup.add(rGloveGroup);
 
       // Splice transition
       var spliceGeo = new THREE.CylinderGeometry(0.018, 0.042, 0.06, 14);
@@ -1351,6 +1522,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
 
       // Initial Stance Orientation
       batPivot.quaternion.copy(currentStanceQuat);
+
+      // Lock arms to glove cuffs in initial stance
+      updateBatsmanArmIK();
     }
 
     // ─────────────────────────────────────────────────────────
@@ -2174,20 +2348,15 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         batPivot.position.set(0, 0.85, 0);
       }
 
-      // Dynamic Batsman Arms linkage: forearms follow bat handle orientation
-      if (batsmanGroup && batsmanGroup.visible && rUpperArm && lUpperArm) {
-        var pitchDiff = Math.max(-1.0, Math.min(1.2, rx - 0.15));
-        var rollDiff = Math.max(-1.0, Math.min(1.0, ry - (-0.15)));
-        rUpperArm.rotation.x = 0.2 + pitchDiff * 0.45;
-        lUpperArm.rotation.x = 0.3 + pitchDiff * 0.45;
-        rUpperArm.rotation.z = -0.65 + rollDiff * 0.35;
-        lUpperArm.rotation.z = -0.55 + rollDiff * 0.35;
-      }
-
       // Batsman subtle body weight transfer
       if (batsmanGroup) {
         batsmanGroup.rotation.y = bodyYaw;
         batsmanGroup.position.set(px, py, 0.40 + pz);
+      }
+
+      // Dynamic Batsman Arms IK linkage: forearms & elbows continuously lock to batting gloves
+      if (batsmanGroup && batsmanGroup.visible) {
+        updateBatsmanArmIK();
       }
 
       // Sample bat sweet spot world position for dynamic swing trajectory trail
@@ -2207,6 +2376,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         var baseQ = getBaseStanceQuat();
         currentStanceQuat.copy(baseQ);
         batPivot.quaternion.copy(baseQ);
+        updateBatsmanArmIK();
 
         phaseIndicator.textContent = hasLiveHardware ? (isCalibrated ? 'CALIBRATED • READY TO SWING' : 'HOLD STANCE & CALIBRATE') : 'READY IN STANCE';
         phaseIndicator.style.borderColor = '#00C97B';
@@ -2339,15 +2509,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         currentStanceQuat.slerp(targetStanceQuat, 0.40);
         batPivot.quaternion.copy(currentStanceQuat);
 
-        // Dynamic Batsman Arms linkage: forearms follow bat handle orientation
-        if (batsmanGroup && batsmanGroup.visible && rUpperArm && lUpperArm) {
-          var be = new THREE.Euler().setFromQuaternion(batPivot.quaternion, 'YXZ');
-          var pitchDiff = Math.max(-0.8, Math.min(0.8, be.x - baseStanceEulerBatsman.x));
-          var rollDiff = Math.max(-0.8, Math.min(0.8, be.y - baseStanceEulerBatsman.y));
-          rUpperArm.rotation.x = 0.2 + pitchDiff * 0.35;
-          lUpperArm.rotation.x = 0.3 + pitchDiff * 0.35;
-          rUpperArm.rotation.z = -0.65 + rollDiff * 0.25;
-          lUpperArm.rotation.z = -0.55 + rollDiff * 0.25;
+        // Dynamic Batsman Arms IK linkage in live hardware mode
+        if (batsmanGroup && batsmanGroup.visible) {
+          updateBatsmanArmIK();
         }
 
         // Update phase indicator with live speed
@@ -2369,6 +2533,11 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         batPivot.quaternion.copy(currentStanceQuat);
         batPivot.rotation.z += idleRoll;
         batPivot.rotation.x += idlePitch;
+      }
+
+      // Always update arm IK to keep arms naturally locked to bat handle
+      if (batsmanGroup && batsmanGroup.visible) {
+        updateBatsmanArmIK();
       }
 
       // Real-time sweet spot velocity tracking & dynamic trajectory ribbon trail
