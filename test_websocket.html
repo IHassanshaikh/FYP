@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 WebSocket Test</title>
+</head>
+<body>
+    <h2>ESP32 WebSocket Connection Test</h2>
+    <p>Status: <span id="status" style="font-weight:bold;color:orange;">Connecting...</span></p>
+    <div id="messages" style="background:#f4f4f4; padding:10px; height:300px; overflow-y:scroll; font-family:monospace;"></div>
+
+    <script>
+        const ws = new WebSocket('ws://192.168.1.11:81/');
+        const statusEl = document.getElementById('status');
+        const msgsEl = document.getElementById('messages');
+
+        ws.onopen = () => {
+            statusEl.innerText = "CONNECTED!";
+            statusEl.style.color = "green";
+            msgsEl.innerHTML += "<div>Connected successfully!</div>";
+        };
+
+        ws.onmessage = (e) => {
+            msgsEl.innerHTML += `<div>${e.data}</div>`;
+            msgsEl.scrollTop = msgsEl.scrollHeight;
+        };
+
+        ws.onerror = (e) => {
+            statusEl.innerText = "ERROR!";
+            statusEl.style.color = "red";
+            msgsEl.innerHTML += "<div style='color:red;'>WebSocket Error occurred. Check F12 Console.</div>";
+            console.error("WebSocket Error:", e);
+        };
+
+        ws.onclose = () => {
+            statusEl.innerText = "DISCONNECTED";
+            statusEl.style.color = "gray";
+        };
+    </script>
+</body>
+</html>

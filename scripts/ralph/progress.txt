@@ -1,0 +1,22 @@
+# Ralph Progress Log
+Started: Sat Oct 24 2026
+---
+
+## Codebase Patterns
+- **Expo Framework:** Expo v56 with Expo Router in `app/`.
+- **Three.js in WebView:** The 3D live visualizer runs inside a React Native `WebView` via `VISUALIZER_HTML` in `components/LiveSwingVisualizer.tsx`.
+- **Three.js CDN Version:** Uses Three.js r134 (`cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js`). Do NOT use `CapsuleGeometry` (only available in r142+); use `CylinderGeometry` instead.
+- **Realistic PBR Graphics:** Tone mapping is `ACESFilmicToneMapping` with exposure 1.25. Textures are procedurally baked onto 2D canvas elements (wood grain willow, cricket pad ribs, jersey weave, matte skin) and mapped onto `MeshStandardMaterial` for realistic rendering without external asset dependencies.
+- **AI Shot Prediction:** `services/AiShotPredictionService.ts` implements multi-tier prediction: Grok API primary, Google Gemini 1.5 Flash fallback, local physics heuristic fallback.
+- **Hardware Integration:** ESP32 WebSocket server at `ws://192.168.4.1:81`. When disconnected, no hardcoded swing data should be simulated; the UI shows OFFLINE / `--` / 0.
+- **State Management:** Session and hardware state stored via `SessionContext.tsx` and `HardwareSensorService.ts`.
+
+---
+## 2026-10-24 - Setup Ralph Loop
+- Created `scripts/ralph/ralph.sh` (Bash loop runner)
+- Created `scripts/ralph/ralph.ps1` (PowerShell loop runner for Windows)
+- Created `scripts/ralph/CLAUDE.md` and `scripts/ralph/prompt.md`
+- Created `scripts/ralph/prd.json` with active feature user stories
+- Added `/prd` and `/ralph` skills to `.claude/skills/`
+- Added `"ralph"` and `"ralph:win"` runner scripts to `package.json`
+---

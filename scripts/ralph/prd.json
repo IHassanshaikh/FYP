@@ -1,0 +1,76 @@
+{
+  "project": "VectorBat Mobile App",
+  "branchName": "ralph/realistic-visualizer-and-ai",
+  "description": "Vector Bat Mobile App - High realism 3D batsman visualizer, Grok/Gemini AI shot prediction, and offline sensor management",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Procedural PBR textures & realistic proportions for 3D Batsman",
+      "description": "As a cricketer, I want realistic 3D visuals of the batsman and bat so the app feels like a professional coaching tool rather than a cartoon.",
+      "acceptanceCriteria": [
+        "Batsman model uses canvas-generated PBR textures for willow bat, jersey, batting pads, and helmet",
+        "Renderer uses ACESFilmicToneMapping with realistic lighting and soft shadows",
+        "Bat blade is accurately sized (cricket standard proportions) with realistic grip and cone handle",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in LiveSwingVisualizer.tsx with Three.js r134 canvas PBR textures and bent-knee athletic stance."
+    },
+    {
+      "id": "US-002",
+      "title": "Real-time AI Shot Prediction with Grok & Gemini APIs",
+      "description": "As a user, I want instant AI feedback predicting the shot type and quality after each real swing.",
+      "acceptanceCriteria": [
+        "AiShotPredictionService integrates Grok beta API with Gemini 1.5 Flash fallback",
+        "Local physics heuristic fallback runs if network or APIs fail",
+        "Live screen displays AI Coach prediction with provider badge (GROK / GEMINI)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Created services/AiShotPredictionService.ts and wired into HardwareSensorService.ts and live.tsx."
+    },
+    {
+      "id": "US-003",
+      "title": "Strict offline sensor mode without hardcoded mock data",
+      "description": "As a user, I want the app to show OFFLINE when the sensor is disconnected rather than showing synthetic swing data.",
+      "acceptanceCriteria": [
+        "Live screen displays OFFLINE badge when hardware WebSocket is disconnected",
+        "Metrics show '--' or 0 instead of fake mock values when disconnected",
+        "Stream source defaults to 'hardware' by default",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Updated live.tsx to initialize lastSwing to null and show OFFLINE badge."
+    },
+    {
+      "id": "US-004",
+      "title": "Fixed timestep animation loop (rAF) in LiveSwingVisualizer",
+      "description": "As a user, I want ultra-smooth 60fps swing physics and impact interpolation regardless of device refresh rate.",
+      "acceptanceCriteria": [
+        "Visualizer animate loop uses fixed-timestep physics updates (accumulator pattern at 60Hz)",
+        "Bat rotation smoothly interpolates sensor quaternion/Euler angles",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Refactored visualizer animate() loop into 60Hz fixed-timestep physicsStep(dt) accumulator pattern."
+    },
+    {
+      "id": "US-005",
+      "title": "Post-impact trajectory trail and sweet spot impact indicator",
+      "description": "As a cricketer, I want to see the 3D bat trajectory arc and a visual indicator where the ball struck the bat face.",
+      "acceptanceCriteria": [
+        "Render 3D ribbon/line trail tracing the bat sweet spot during the swing",
+        "Show a glowing impact spot on the bat face where impact was registered",
+        "Trail automatically fades after swing resets",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+Your software now has the full swing
+
+Imagine storing one frame every 10 ms:
+
+Time	Quaternion	Gyro	Impact
+0 ms	Q1	0	0
+10 ms	Q2	120°/s	0
+20 ms	Q3	250°/s	0
+30 ms	Q4	510°/s	0
+40 ms	Q5	980°/s	0
+50 ms	Q6	1700°/s	86g ← Ball hit
+60 ms	Q7	1100°/s	0
+70 ms	Q8	600°/s	0
+
+This sequence is enough to replay the swing animation.
