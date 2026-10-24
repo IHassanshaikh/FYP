@@ -3,5 +3,11 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "ralphLoop.taskFile": "docs/tasks/prd.md",
+  "ralphLoop.promptFile": "docs/tasks/prompt.md",
+  "ralphLoop.progressFile": "docs/tasks/progress.txt",
+  "ralph.taskFile": "docs/tasks/prd.md",
+  "ralph.promptFile": "docs/tasks/prompt.md",
+  "ralph.progressFile": "docs/tasks/progress.txt"
 }

@@ -1,0 +1,45 @@
+# Ralph Progress Log
+Started: Sat Oct 24 2026
+---
+
+## Codebase Patterns
+- **Expo Framework:** Expo v56 with Expo Router in `app/`.
+- **Three.js in WebView/iframe:** The 3D live visualizer runs inside `components/LiveSwingVisualizer.tsx` via Three.js r134.
+- **Realistic PBR Graphics:** Tone mapping is `ACESFilmicToneMapping` with exposure 1.25. Textures are procedurally baked onto 2D canvas elements (wood grain willow, cricket pad ribs, jersey weave, matte skin) and mapped onto `MeshStandardMaterial`.
+- **Side-On Batting Biomechanics:** Right-handed batsman stands side-on: chest facing off-side (+X), front leg forward towards bowler (+Z) with flexed knee, rear leg back across stumps (-Z), head turned 75° over front shoulder with gaze fixed on bowler.
+- **Protective Equipment:** Pro 7-cane bolster pads with knee wings; pro multi-segment finger roll batting gloves gripping handle in textbook two-handed 'V' grip; carbon composite helmet shell with StemGuard rear neck protector and double-bar titanium face grille.
+- **Stadium & Pitch:** Procedural clay-loam pitch with crease markings and footmark scuffs; radial concentric lawn mowing stripes; 4 steel floodlight towers with halo lens flares.
+- **AI Shot Prediction:** `services/AiShotPredictionService.ts` integrates Grok beta API as primary with Gemini 1.5 Flash fallback.
+- **Hardware Integration:** ESP32 WebSocket server at `ws://192.168.1.11:81`. When disconnected, no hardcoded swing data is simulated (OFFLINE badge).
+
+---
+
+## 2026-10-24 - Setup Ralph Loop
+- Created `scripts/ralph/ralph.sh` (Bash loop runner)
+- Created `scripts/ralph/ralph.ps1` (PowerShell loop runner for Windows)
+- Created `scripts/ralph/CLAUDE.md` and `scripts/ralph/prompt.md`
+- Created `scripts/ralph/prd.json` with active feature user stories
+- Added `/prd` and `/ralph` skills to `.claude/skills/`
+- Added `"ralph"` and `"ralph:win"` runner scripts to `package.json`
+
+---
+
+## 2026-10-24 - US-001 through US-005: 3D Trajectory Trail, Sweet Spot Impact FX & Fixed Timestep Loop
+- Upgraded batsman scale from 1.40x to 1.0 natural athletic human scale (1.82m tall pro cricketer).
+- Built authentic adult short-handle English willow cricket bat (handle 27cm with rubber chevron grip, blade 58cm × 10.8cm × 5.2cm, aerodynamic power spine, laser brand decal, VectorBat ESP32 sensor module with live LED).
+- Fixed mobile portrait camera zoom: added responsive distance multiplier, centered camera lookTarget.
+- Built 3D aerodynamic glowing trajectory ribbon mesh with vertex color gradient and core tracking line.
+- Implemented dynamic sweet spot shockwave ring on the bat blade face that expands radially upon impact, alongside 40 contact spark particles.
+- Refactored visualizer animate() loop into 60Hz fixed-timestep physicsStep(dt) accumulator pattern.
+
+---
+
+## 2026-10-24 - US-006, US-007 & US-008: Side-On Batsman Biomechanics, Photorealistic Pitch & Stadium
+- Re-engineered the 3D cricketer from front-on cartoon to an authentic side-on biomechanical cricket stance.
+- Pro 7-cane bolster batting pads with molded knee roll wings and ankle wraps; pro multi-segment finger roll batting gloves; carbon composite helmet shell with StemGuard rear neck protector and double-bar titanium face grille.
+- Canvas-baked clay-loam cricket pitch with grass fringes, batsman popping crease footmark spike scuffs, crisp regulation chalk popping and bowling creases. Outfield rendered with Lord's-style concentric radial lawn mowing stripes.
+- 4 tall lattice steel floodlight towers with 6-LED bank heads and soft halo lens flare sprites, glowing boundary ring, and soft contact shadows.
+- Accurately tuned TV broadcast presets (`side` = off-side cover/point replay camera with full headroom clearance, `bowler` = main TV camera from bowler's end, `batsman` = keeper/umpire POV behind stumps, `top` = bird's-eye tactical view).
+- Smooth dynamic linkage between hands, bat handle, forearms, and body lean across all 8 stroke types.
+- Verification: `npx tsc --noEmit` exited with code 0. Verified visually via browser.
+---

@@ -25,9 +25,22 @@ Vector Bat is a smart cricket bat analysis application connecting ESP32 MPU6050/
 - [x] Typecheck passes.
 
 ### US-004: Fixed timestep animation loop (rAF) in visualizer
-- [ ] Visualizer uses fixed 60Hz physics accumulator loop.
-- [ ] Typecheck passes.
+- [x] Visualizer uses fixed 60Hz physics accumulator loop.
+- [x] Typecheck passes.
 
 ### US-005: Post-impact trajectory trail and sweet spot impact indicator
-- [ ] 3D ribbon trail and sweet spot glow.
-- [ ] Typecheck passes.
+- [x] 3D ribbon trail and sweet spot glow.
+- [x] Typecheck passes.
+
+### US-006: Textbook side-on batsman stance & anatomical pro gear
+- [x] Authentic side-on cricket stance with 7-cane bolster pads, batting gloves with finger rolls, and helmet grille.
+- [x] Typecheck passes.
+
+### US-007: Realistic stadium pitch, radial grass outfield & floodlights
+- [x] Clay-loam pitch with crease markings and spike scuffs, radial lawn mower pattern, 4 floodlight towers.
+- [x] Typecheck passes.
+
+### US-008: Broadcast camera angles & kinematic stroke animations
+- [x] Broadcast TV camera presets (`side`, `bowler`, `batsman`, `top`) with clean headroom framing.
+- [x] Typecheck passes.
+
