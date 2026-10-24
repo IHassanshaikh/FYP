@@ -69,8 +69,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented 3D aerodynamic ribbon trail with vertex colors and radial shockwave sweet spot impact FX on bat face. Fixed camera framing for mobile portrait view and rescaled batsman to natural 1.0 proportions."
     }
   ]
 }

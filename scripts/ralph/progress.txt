@@ -7,6 +7,7 @@ Started: Sat Oct 24 2026
 - **Three.js in WebView:** The 3D live visualizer runs inside a React Native `WebView` via `VISUALIZER_HTML` in `components/LiveSwingVisualizer.tsx`.
 - **Three.js CDN Version:** Uses Three.js r134 (`cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js`). Do NOT use `CapsuleGeometry` (only available in r142+); use `CylinderGeometry` instead.
 - **Realistic PBR Graphics:** Tone mapping is `ACESFilmicToneMapping` with exposure 1.25. Textures are procedurally baked onto 2D canvas elements (wood grain willow, cricket pad ribs, jersey weave, matte skin) and mapped onto `MeshStandardMaterial` for realistic rendering without external asset dependencies.
+- **Camera Aspect Framing:** In mobile portrait aspect ratios, camera distance requires a 1.55x multiplier (`radius = 3.40`) centered at `lookTarget = (0, 0.88, 0.05)` so the entire 1.82m cricketer from cleats to helmet and bat is framed with comfortable margins.
 - **AI Shot Prediction:** `services/AiShotPredictionService.ts` implements multi-tier prediction: Grok API primary, Google Gemini 1.5 Flash fallback, local physics heuristic fallback.
 - **Hardware Integration:** ESP32 WebSocket server at `ws://192.168.4.1:81`. When disconnected, no hardcoded swing data should be simulated; the UI shows OFFLINE / `--` / 0.
 - **State Management:** Session and hardware state stored via `SessionContext.tsx` and `HardwareSensorService.ts`.
@@ -19,4 +20,21 @@ Started: Sat Oct 24 2026
 - Created `scripts/ralph/prd.json` with active feature user stories
 - Added `/prd` and `/ralph` skills to `.claude/skills/`
 - Added `"ralph"` and `"ralph:win"` runner scripts to `package.json`
+
+---
+## 2026-10-24 - US-005: 3D Trajectory Trail, Sweet Spot Impact FX & Realistic Proportions
+- **What was implemented:**
+  - Upgraded batsman scale from 1.40x to 1.0 natural athletic human scale (1.82m tall pro cricketer).
+  - Repositioned bat pivot to natural hands height at `(0.10, 0.96, 0.15)`.
+  - Built authentic adult short-handle English willow cricket bat (handle 27cm with rubber chevron grip, blade 58cm × 10.8cm × 5.2cm, aerodynamic power spine, laser brand decal, VectorBat ESP32 sensor module with live LED).
+  - Fixed mobile portrait camera zoom: added responsive distance multiplier (`distMultiplier = 1.55` in portrait), centered camera lookTarget at `(0, 0.88, 0.05)`.
+  - Built 3D aerodynamic glowing trajectory ribbon mesh with vertex color gradient (white-hot tip -> vibrant brand teal -> transparent fade) and core tracking line.
+  - Implemented dynamic sweet spot shockwave ring on the bat blade face that expands radially upon impact, alongside 40 contact spark particles.
+- **Files changed:**
+  - `components/LiveSwingVisualizer.tsx`
+  - `scripts/ralph/prd.json`
+  - `scripts/ralph/progress.txt`
+- **Verification:**
+  - `npx tsc --noEmit` passed with 0 errors.
+  - Expo dev server running with hot-reload active.
 ---

@@ -352,8 +352,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     var camera, scene, renderer, clock;
     var batsmanGroup, batPivot, batGroup, bladeMesh;
     var rUpperArm, rForearm, lUpperArm, lForearm; // Batsman arm dynamic linkage
-    var trailLine, trailGeometry, trailPositions = [], maxTrailPoints = 80;
-    var impactLight, impactParticles = [];
+    var trailCoreLine, trailCoreGeo, trailRibbonMesh, trailRibbonGeo;
+    var trailPositions = [], maxTrailPoints = 65;
+    var impactLight, impactParticles = [], impactShockwave, sweetSpotIndicator;
     var cameraAngle = 'side';
     var isSwinging = false;
     var swingTime = 0;
@@ -395,9 +396,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     var invertYaw = false;
     var mountingMode = 'spine_up'; // 'spine_up' (standard: vertical on back spine), 'spine_down'
 
-    var orbit = { theta: 0.05, phi: 0.18, radius: 2.20 };
+    var orbit = { theta: 0.06, phi: 0.16, radius: 3.40 };
     var drag = { active: false, startX: 0, startY: 0, moved: 0 };
-    var lookTarget = new THREE.Vector3(0, 1.05, 0.05);
+    var lookTarget = new THREE.Vector3(0, 0.90, 0.05);
 
     var phaseIndicator = document.getElementById('phase-name');
     var impactBanner = document.getElementById('impact-banner');
@@ -489,13 +490,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         }
         if (batsmanGroup) batsmanGroup.visible = true;
         if (batPivot) {
-          batPivot.position.set(0.16, 1.42, 0.22);
+          batPivot.position.set(0.10, 0.96, 0.15);
           batPivot.scale.set(1.0, 1.0, 1.0);
         }
         if (batGroup) {
           batGroup.position.set(0, 0, 0);
         }
-        lookTarget.set(0, 1.05, 0.05);
+        lookTarget.set(0, 0.90, 0.05);
       }
       // Re-align to appropriate base stance
       var baseQ = getBaseStanceQuat();
@@ -787,8 +788,8 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
 
     function buildBatsmanAndBat() {
       batsmanGroup = new THREE.Group();
-      batsmanGroup.scale.set(1.40, 1.40, 1.40);
-      batsmanGroup.position.set(0, 0, 0.30);
+      batsmanGroup.scale.set(1.0, 1.0, 1.0);
+      batsmanGroup.position.set(0, 0, 0.15);
       scene.add(batsmanGroup);
 
       // ── CANVAS-TEXTURED PBR MATERIALS ──────────────────────
@@ -798,357 +799,402 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       var willowTex  = makeWillowTex();
       var helmetTex  = makeHelmetTex();
 
-      var jerseyMat = new THREE.MeshStandardMaterial({ map: jerseyTex,  roughness: 0.78, metalness: 0.02 });
-      var kitMat    = new THREE.MeshStandardMaterial({ color: 0xE0E8F2, roughness: 0.82, metalness: 0.00 });
-      var padMat    = new THREE.MeshStandardMaterial({ map: padTex,     roughness: 0.52, metalness: 0.04 });
-      var gloveMat  = new THREE.MeshStandardMaterial({ color: 0x054030, roughness: 0.72, metalness: 0.06,
-                        bumpScale: 0.005 });
-      var skinMat   = new THREE.MeshStandardMaterial({ map: skinTex,    roughness: 0.90, metalness: 0.00 });
-      var helmetMat = new THREE.MeshStandardMaterial({ map: helmetTex,  roughness: 0.28, metalness: 0.55 });
-      var grillMat  = new THREE.MeshStandardMaterial({ color: 0x38BDF8, roughness: 0.35, metalness: 0.65, emissive: 0x003050, emissiveIntensity: 0.4 });
-      var shoeMat   = new THREE.MeshStandardMaterial({ color: 0xD0D8E2, roughness: 0.65, metalness: 0.10 });
-      var soleMat   = new THREE.MeshStandardMaterial({ color: 0x191919, roughness: 0.95, metalness: 0.00 });
+      var jerseyMat = new THREE.MeshStandardMaterial({ map: jerseyTex,  roughness: 0.75, metalness: 0.04 });
+      var kitMat    = new THREE.MeshStandardMaterial({ color: 0xF0F4F8, roughness: 0.85, metalness: 0.00 });
+      var padMat    = new THREE.MeshStandardMaterial({ map: padTex,     roughness: 0.50, metalness: 0.05 });
+      var gloveMat  = new THREE.MeshStandardMaterial({ color: 0x0A3A2A, roughness: 0.65, metalness: 0.08 });
+      var gloveWhiteMat = new THREE.MeshStandardMaterial({ color: 0xFAFAFA, roughness: 0.80, metalness: 0.02 });
+      var skinMat   = new THREE.MeshStandardMaterial({ map: skinTex,    roughness: 0.88, metalness: 0.00 });
+      var helmetMat = new THREE.MeshStandardMaterial({ map: helmetTex,  roughness: 0.28, metalness: 0.50 });
+      var grillMat  = new THREE.MeshStandardMaterial({ color: 0x94A3B8, roughness: 0.25, metalness: 0.85 });
+      var shoeMat   = new THREE.MeshStandardMaterial({ color: 0xE2E8F0, roughness: 0.60, metalness: 0.12 });
+      var soleMat   = new THREE.MeshStandardMaterial({ color: 0x1E293B, roughness: 0.90, metalness: 0.00 });
 
       // ═══════════════════════════════════════════════════════
-      // REALISTIC CRICKET BATSMAN - PROPER BENT-KNEE STANCE
+      // REALISTIC 1.82M CRICKET BATSMAN - TEXTBOOK ATHLETIC STANCE
       // ═══════════════════════════════════════════════════════
 
-      // ── FEET / SHOES (wide base, back foot perpendicular) ──
-      // Right foot (back foot, perpendicular to pitch)
-      var rShoeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.135, 0.065, 0.28), shoeMat);
-      rShoeMesh.position.set(-0.155, 0.032, -0.06);
-      rShoeMesh.rotation.y = 0.18;
-      batsmanGroup.add(rShoeMesh);
-      var rSole = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.025, 0.275), soleMat);
-      rSole.position.set(-0.155, 0.012, -0.06);
-      rSole.rotation.y = 0.18;
+      // ── FEET / CLEATED CRICKET SHOES ──
+      // Right foot (back foot, inside crease line, angled slightly towards point)
+      var rShoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.055, 0.23), shoeMat);
+      rShoe.position.set(-0.11, 0.028, -0.06);
+      rShoe.rotation.y = 0.22;
+      batsmanGroup.add(rShoe);
+      var rSole = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.018, 0.225), soleMat);
+      rSole.position.set(-0.11, 0.009, -0.06);
+      rSole.rotation.y = 0.22;
       batsmanGroup.add(rSole);
 
-      // Left foot (front foot, towards bowler)
-      var lShoeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.135, 0.065, 0.28), shoeMat);
-      lShoeMesh.position.set(0.155, 0.032, 0.14);
-      lShoeMesh.rotation.y = -0.12;
-      batsmanGroup.add(lShoeMesh);
-      var lSole = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.025, 0.275), soleMat);
-      lSole.position.set(0.155, 0.012, 0.14);
-      lSole.rotation.y = -0.12;
+      // Left foot (front foot, slightly forward towards mid-off)
+      var lShoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.055, 0.23), shoeMat);
+      lShoe.position.set(0.12, 0.028, 0.10);
+      lShoe.rotation.y = -0.15;
+      batsmanGroup.add(lShoe);
+      var lSole = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.018, 0.225), soleMat);
+      lSole.position.set(0.12, 0.009, 0.10);
+      lSole.rotation.y = -0.15;
       batsmanGroup.add(lSole);
 
-      // ── RIGHT LEG (back leg, slightly bent knee) ──
-      var rShinGeo = new THREE.CylinderGeometry(0.075, 0.065, 0.44, 12);
+      // ── RIGHT LEG (back leg, flexed knee in athletic readiness) ──
+      var rShinGeo = new THREE.CylinderGeometry(0.058, 0.050, 0.40, 14);
       var rShin = new THREE.Mesh(rShinGeo, padMat);
-      rShin.position.set(-0.155, 0.285, -0.04);
-      rShin.rotation.x = 0.06;
+      rShin.position.set(-0.11, 0.24, -0.04);
+      rShin.rotation.x = 0.08;
       rShin.castShadow = true;
       batsmanGroup.add(rShin);
 
-      var rThighGeo = new THREE.CylinderGeometry(0.095, 0.085, 0.42, 12);
+      // Pad vertical cane ridges (3 embossed lines on face)
+      for (var ri = -1; ri <= 1; ri++) {
+        var ribGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 8);
+        var rib = new THREE.Mesh(ribGeo, padMat);
+        rib.position.set(-0.11 + ri * 0.028, 0.24, 0.015);
+        rib.rotation.x = 0.08;
+        batsmanGroup.add(rib);
+      }
+
+      // Pad knee roll
+      var rKneeRoll = new THREE.Mesh(new THREE.SphereGeometry(0.060, 12, 10), padMat);
+      rKneeRoll.scale.set(1.0, 0.65, 0.85);
+      rKneeRoll.position.set(-0.11, 0.44, -0.025);
+      batsmanGroup.add(rKneeRoll);
+
+      var rThighGeo = new THREE.CylinderGeometry(0.075, 0.065, 0.38, 14);
       var rThigh = new THREE.Mesh(rThighGeo, kitMat);
-      rThigh.position.set(-0.155, 0.72, -0.03);
-      rThigh.rotation.x = -0.10;
+      rThigh.position.set(-0.11, 0.63, -0.01);
+      rThigh.rotation.x = -0.12;
       rThigh.castShadow = true;
       batsmanGroup.add(rThigh);
 
-      // Right knee cap
-      var rKnee = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 10), padMat);
-      rKnee.scale.set(1.0, 0.75, 0.85);
-      rKnee.position.set(-0.155, 0.510, -0.02);
-      batsmanGroup.add(rKnee);
-
-      // ── LEFT LEG (front leg, more bent, weight forward) ──
-      var lShinGeo = new THREE.CylinderGeometry(0.075, 0.065, 0.44, 12);
+      // ── LEFT LEG (front leg, bent knee leading towards bowler) ──
+      var lShinGeo = new THREE.CylinderGeometry(0.058, 0.050, 0.40, 14);
       var lShin = new THREE.Mesh(lShinGeo, padMat);
-      lShin.position.set(0.155, 0.285, 0.10);
-      lShin.rotation.x = -0.10;
+      lShin.position.set(0.12, 0.24, 0.08);
+      lShin.rotation.x = -0.14;
       lShin.castShadow = true;
       batsmanGroup.add(lShin);
 
-      var lThighGeo = new THREE.CylinderGeometry(0.095, 0.085, 0.42, 12);
+      for (var li = -1; li <= 1; li++) {
+        var lRibGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 8);
+        var lRib = new THREE.Mesh(lRibGeo, padMat);
+        lRib.position.set(0.12 + li * 0.028, 0.24, 0.135);
+        lRib.rotation.x = -0.14;
+        batsmanGroup.add(lRib);
+      }
+
+      var lKneeRoll = new THREE.Mesh(new THREE.SphereGeometry(0.060, 12, 10), padMat);
+      lKneeRoll.scale.set(1.0, 0.65, 0.85);
+      lKneeRoll.position.set(0.12, 0.44, 0.06);
+      batsmanGroup.add(lKneeRoll);
+
+      var lThighGeo = new THREE.CylinderGeometry(0.075, 0.065, 0.38, 14);
       var lThigh = new THREE.Mesh(lThighGeo, kitMat);
-      lThigh.position.set(0.155, 0.72, 0.09);
+      lThigh.position.set(0.12, 0.63, 0.04);
       lThigh.rotation.x = -0.18;
       lThigh.castShadow = true;
       batsmanGroup.add(lThigh);
 
-      // Left knee cap
-      var lKnee = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 10), padMat);
-      lKnee.scale.set(1.0, 0.75, 0.85);
-      lKnee.position.set(0.155, 0.510, 0.09);
-      batsmanGroup.add(lKnee);
+      // ── HIPS & WAIST ──
+      var hipGeo = new THREE.CylinderGeometry(0.145, 0.130, 0.16, 16);
+      var hips = new THREE.Mesh(hipGeo, kitMat);
+      hips.position.set(0.005, 0.81, 0.02);
+      hips.rotation.x = -0.06;
+      batsmanGroup.add(hips);
 
-      // ── GROIN / HIP GUARD ──
-      var hipGeo = new THREE.CylinderGeometry(0.19, 0.165, 0.18, 14);
-      var hipGuard = new THREE.Mesh(hipGeo, kitMat);
-      hipGuard.position.set(0, 0.92, 0.03);
-      hipGuard.rotation.x = -0.08;
-      batsmanGroup.add(hipGuard);
-
-      // ── TORSO (athletic tapered build, slight forward lean) ──
-      var torsoGeo = new THREE.CylinderGeometry(0.225, 0.195, 0.58, 16);
+      // ── TORSO (athletic cricket team jersey, tapered V build) ──
+      var torsoGeo = new THREE.CylinderGeometry(0.165, 0.140, 0.44, 18);
       var torso = new THREE.Mesh(torsoGeo, jerseyMat);
-      torso.position.set(0, 1.22, 0.04);
-      torso.rotation.x = -0.08; // forward lean
+      torso.position.set(0.005, 1.05, 0.03);
+      torso.rotation.x = -0.08; // athletic forward crouch
       torso.castShadow = true;
       batsmanGroup.add(torso);
 
-      // Chest plate (slightly wider)
-      var chestGeo = new THREE.CylinderGeometry(0.235, 0.220, 0.14, 16);
+      // Chest plate / upper torso
+      var chestGeo = new THREE.CylinderGeometry(0.175, 0.160, 0.16, 18);
       var chest = new THREE.Mesh(chestGeo, jerseyMat);
-      chest.position.set(0, 1.43, 0.04);
+      chest.position.set(0.005, 1.22, 0.03);
+      chest.rotation.x = -0.08;
       chest.castShadow = true;
       batsmanGroup.add(chest);
 
-      // ── SHOULDERS (broad) ──
-      var shoulderBarGeo = new THREE.CylinderGeometry(0.078, 0.078, 0.50, 14);
-      var shoulderBar = new THREE.Mesh(shoulderBarGeo, jerseyMat);
-      shoulderBar.position.set(0, 1.52, 0.04);
+      // Shoulders bar
+      var shoulderGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.38, 14);
+      var shoulderBar = new THREE.Mesh(shoulderGeo, jerseyMat);
+      shoulderBar.position.set(0.005, 1.30, 0.03);
       shoulderBar.rotation.z = Math.PI / 2;
       shoulderBar.castShadow = true;
       batsmanGroup.add(shoulderBar);
 
-      // ── NECK ──
-      var neckGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.12, 12);
+      // Neck
+      var neckGeo = new THREE.CylinderGeometry(0.048, 0.058, 0.10, 14);
       var neck = new THREE.Mesh(neckGeo, skinMat);
-      neck.position.set(0, 1.59, 0.03);
+      neck.position.set(0.005, 1.37, 0.02);
       batsmanGroup.add(neck);
 
-      // ── HEAD (realistic proportions) ──
-      var headGeo = new THREE.SphereGeometry(0.165, 24, 20);
+      // ── CRICKET HELMET & HEAD (pro Masuri/Shrey style) ──
+      var headGeo = new THREE.SphereGeometry(0.125, 24, 20);
       var head = new THREE.Mesh(headGeo, helmetMat);
-      head.position.set(0, 1.78, 0.02);
-      head.scale.set(1.0, 1.08, 1.0);
+      head.position.set(0.005, 1.50, 0.015);
+      head.scale.set(1.0, 1.06, 1.02);
       head.castShadow = true;
       batsmanGroup.add(head);
 
-      // Helmet ventilation ridge (top)
-      var ridgeGeo = new THREE.BoxGeometry(0.06, 0.04, 0.28);
-      var ridge = new THREE.Mesh(ridgeGeo, grillMat);
-      ridge.position.set(0, 1.95, 0.02);
-      batsmanGroup.add(ridge);
-
       // Helmet visor peak
-      var peakGeo = new THREE.CylinderGeometry(0.175, 0.175, 0.028, 20, 1, false, -Math.PI * 0.55, Math.PI * 0.55);
-      var peakMat = new THREE.MeshStandardMaterial({ color: 0x060B14, roughness: 0.30, metalness: 0.50 });
+      var peakGeo = new THREE.CylinderGeometry(0.130, 0.130, 0.022, 24, 1, false, -Math.PI * 0.55, Math.PI * 0.55);
+      var peakMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, roughness: 0.35, metalness: 0.40 });
       var peak = new THREE.Mesh(peakGeo, peakMat);
-      peak.position.set(0, 1.70, 0.09);
-      peak.rotation.x = 0.20;
+      peak.position.set(0.005, 1.45, 0.075);
+      peak.rotation.x = 0.22;
       batsmanGroup.add(peak);
 
-      // Helmet face guard grille (realistic cage bars)
+      // Helmet face grille (titanium cage bars)
       var grillGroup = new THREE.Group();
-      grillGroup.position.set(0, 1.72, 0.13);
+      grillGroup.position.set(0.005, 1.46, 0.095);
       for (var gi = 0; gi < 5; gi++) {
-        var barGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.22, 6);
-        var bar = new THREE.Mesh(barGeo, grillMat);
-        bar.position.set(-0.09 + gi * 0.045, 0, 0);
-        bar.rotation.x = Math.PI / 2;
-        grillGroup.add(bar);
+        var vBarGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6);
+        var vBar = new THREE.Mesh(vBarGeo, grillMat);
+        vBar.position.set(-0.055 + gi * 0.028, 0, 0);
+        vBar.rotation.x = Math.PI / 2;
+        grillGroup.add(vBar);
       }
       for (var gj = 0; gj < 3; gj++) {
-        var hBarGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.18, 6);
+        var hBarGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.12, 6);
         var hBar = new THREE.Mesh(hBarGeo, grillMat);
-        hBar.position.set(0, -0.04 + gj * 0.04, 0);
+        hBar.position.set(0, -0.03 + gj * 0.028, 0);
         hBar.rotation.z = Math.PI / 2;
         grillGroup.add(hBar);
       }
       batsmanGroup.add(grillGroup);
 
-      // Ear protector dome (left side)
-      var earDomeGeo = new THREE.SphereGeometry(0.065, 12, 10, 0, Math.PI);
+      // Ear dome protector
+      var earDomeGeo = new THREE.SphereGeometry(0.045, 12, 10, 0, Math.PI);
       var earDome = new THREE.Mesh(earDomeGeo, helmetMat);
-      earDome.position.set(-0.168, 1.78, 0.01);
+      earDome.position.set(-0.125, 1.50, 0.01);
       earDome.rotation.y = -Math.PI / 2;
       batsmanGroup.add(earDome);
 
-      // ── RIGHT ARM (bottom hand – closer to bat, elbow out) ──
-      var rUpperArmGeo = new THREE.CylinderGeometry(0.058, 0.052, 0.34, 10);
+      // ── ARMS & HANDS (holding bat handle at waist/crease) ──
+      // Right arm (bottom hand)
+      var rUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
       rUpperArm = new THREE.Mesh(rUpperArmGeo, jerseyMat);
-      rUpperArm.position.set(0.27, 1.40, 0.10);
-      rUpperArm.rotation.z = -0.72;
-      rUpperArm.rotation.x = 0.25;
+      rUpperArm.position.set(0.18, 1.22, 0.06);
+      rUpperArm.rotation.z = -0.68;
+      rUpperArm.rotation.x = 0.28;
       rUpperArm.castShadow = true;
       batsmanGroup.add(rUpperArm);
 
-      var rForearmGeo = new THREE.CylinderGeometry(0.048, 0.040, 0.30, 10);
+      var rForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.24, 12);
       rForearm = new THREE.Mesh(rForearmGeo, skinMat);
-      rForearm.position.set(0.38, 1.18, 0.18);
-      rForearm.rotation.z = -1.10;
-      rForearm.rotation.x = 0.35;
+      rForearm.position.set(0.24, 1.05, 0.12);
+      rForearm.rotation.z = -1.05;
+      rForearm.rotation.x = 0.38;
       rForearm.castShadow = true;
       batsmanGroup.add(rForearm);
 
-      // ── LEFT ARM (top hand – higher, leading arm) ──
-      var lUpperArmGeo = new THREE.CylinderGeometry(0.058, 0.052, 0.34, 10);
+      // Left arm (top hand)
+      var lUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
       lUpperArm = new THREE.Mesh(lUpperArmGeo, jerseyMat);
-      lUpperArm.position.set(0.25, 1.44, 0.13);
-      lUpperArm.rotation.z = -0.58;
+      lUpperArm.position.set(0.15, 1.25, 0.09);
+      lUpperArm.rotation.z = -0.52;
       lUpperArm.rotation.x = 0.32;
       lUpperArm.castShadow = true;
       batsmanGroup.add(lUpperArm);
 
-      var lForearmGeo = new THREE.CylinderGeometry(0.048, 0.040, 0.30, 10);
+      var lForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.24, 12);
       lForearm = new THREE.Mesh(lForearmGeo, skinMat);
-      lForearm.position.set(0.33, 1.24, 0.20);
-      lForearm.rotation.z = -1.00;
-      lForearm.rotation.x = 0.40;
+      lForearm.position.set(0.20, 1.10, 0.14);
+      lForearm.rotation.z = -0.92;
+      lForearm.rotation.x = 0.42;
       lForearm.castShadow = true;
       batsmanGroup.add(lForearm);
 
-      // ══════════════════════════════════════════
-      // BAT PIVOT positioned at hands grip height
-      // ══════════════════════════════════════════
+      // ═══════════════════════════════════════════════════════
+      // BAT PIVOT positioned at hands grip height (0.10, 0.96, 0.15)
+      // ═══════════════════════════════════════════════════════
       batPivot = new THREE.Group();
-      batPivot.position.set(0.16, 1.42, 0.22);
+      batPivot.position.set(0.10, 0.96, 0.15);
       scene.add(batPivot);
 
       batGroup = new THREE.Group();
       batPivot.add(batGroup);
 
-      // ── REALISTIC ENGLISH WILLOW BAT ──
-      var willowMat = new THREE.MeshStandardMaterial({ map: willowTex, roughness: 0.22, metalness: 0.03,
-                        envMapIntensity: 0.6 });
-      var spineMat  = new THREE.MeshStandardMaterial({ color: 0xB07830, roughness: 0.40, metalness: 0.02 });
-      var gripMat   = new THREE.MeshStandardMaterial({ color: 0x0A0D18, roughness: 0.90, metalness: 0.00 });
-      var stickerMat = new THREE.MeshStandardMaterial({ color: 0x00C97B, roughness: 0.18, metalness: 0.12,
-                          emissive: 0x004020, emissiveIntensity: 0.5 });
+      // ── AUTHENTIC ENGLISH WILLOW SHORT-HANDLE (SH) CRICKET BAT ──
+      var willowMat = new THREE.MeshStandardMaterial({
+        map: willowTex,
+        roughness: 0.28,
+        metalness: 0.02
+      });
+      var spineMat = new THREE.MeshStandardMaterial({ color: 0xB57E38, roughness: 0.45, metalness: 0.02 });
+      var gripMat  = new THREE.MeshStandardMaterial({ color: 0x0F172A, roughness: 0.92, metalness: 0.00 });
+      var stickerMat = new THREE.MeshStandardMaterial({
+        color: 0x00C97B,
+        roughness: 0.20,
+        metalness: 0.15,
+        emissive: 0x003318,
+        emissiveIntensity: 0.4
+      });
 
-      // Rubber grip handle (44 cm)
-      var handleGeo = new THREE.CylinderGeometry(0.033, 0.037, 0.44, 18);
+      // Rubber Chevron Handle (length 27 cm)
+      var handleGeo = new THREE.CylinderGeometry(0.016, 0.018, 0.27, 18);
       var handle = new THREE.Mesh(handleGeo, gripMat);
-      handle.position.y = 0.22;
+      handle.position.y = 0.135;
       handle.castShadow = true;
       batGroup.add(handle);
 
-      // Grip chevron rings
-      for (var ci = 0; ci < 7; ci++) {
-        var chevGeo = new THREE.TorusGeometry(0.035, 0.005, 6, 18);
+      // Chevron grip rings
+      for (var ci = 0; ci < 6; ci++) {
+        var chevGeo = new THREE.TorusGeometry(0.017, 0.0028, 6, 16);
         var chevMat = new THREE.MeshStandardMaterial({ color: 0x00C97B, roughness: 0.5 });
         var chev = new THREE.Mesh(chevGeo, chevMat);
-        chev.position.y = 0.03 + ci * 0.062;
+        chev.position.y = 0.02 + ci * 0.042;
         chev.rotation.x = Math.PI / 2;
         batGroup.add(chev);
       }
 
-      // Gloves at grip position
-      var lGlove = new THREE.Mesh(new THREE.SphereGeometry(0.070, 16, 14), gloveMat);
-      lGlove.position.set(0, 0.38, 0.01);
-      lGlove.scale.set(1.1, 0.9, 1.0);
+      // Padded Batting Gloves gripping the handle
+      // Top Hand (Left)
+      var lGlove = new THREE.Mesh(new THREE.SphereGeometry(0.046, 14, 12), gloveMat);
+      lGlove.position.set(0, 0.22, 0.008);
+      lGlove.scale.set(1.15, 0.85, 1.0);
       batGroup.add(lGlove);
-      var rGlove = new THREE.Mesh(new THREE.SphereGeometry(0.070, 16, 14), gloveMat);
-      rGlove.position.set(0, 0.14, 0.01);
-      rGlove.scale.set(1.1, 0.9, 1.0);
+      // Bottom Hand (Right)
+      var rGlove = new THREE.Mesh(new THREE.SphereGeometry(0.046, 14, 12), gloveMat);
+      rGlove.position.set(0, 0.08, 0.008);
+      rGlove.scale.set(1.15, 0.85, 1.0);
       batGroup.add(rGlove);
 
-      // Splice (handle-to-blade transition)
-      var spliceGeo = new THREE.CylinderGeometry(0.037, 0.082, 0.10, 14);
+      // Splice transition
+      var spliceGeo = new THREE.CylinderGeometry(0.018, 0.042, 0.06, 14);
       var splice = new THREE.Mesh(spliceGeo, spineMat);
-      splice.position.y = -0.050;
+      splice.position.y = -0.030;
       batGroup.add(splice);
 
-      // FULL MATCH BAT BLADE (108mm wide, 1.05m blade)
-      var bladeWidth  = 0.295;
-      var bladeLength = 1.12;
-      var bladeDepth  = 0.092;
+      // ADULT CRICKET BAT BLADE (width 10.8 cm, length 58 cm, depth 5.2 cm)
+      var bladeWidth  = 0.108;
+      var bladeLength = 0.58;
+      var bladeDepth  = 0.052;
       var bladeGeo = new THREE.BoxGeometry(bladeWidth, bladeLength, bladeDepth);
       bladeMesh = new THREE.Mesh(bladeGeo, willowMat);
-      bladeMesh.position.set(0, -0.58, 0);
+      bladeMesh.position.set(0, -0.32, 0);
       bladeMesh.castShadow = true;
       batGroup.add(bladeMesh);
 
-      // Rounded toe at bottom
-      var toeGeo = new THREE.CylinderGeometry(0.148, 0.148, bladeDepth, 16, 1, false, 0, Math.PI);
+      // Curved wooden toe at bottom of blade
+      var toeGeo = new THREE.CylinderGeometry(0.054, 0.054, bladeDepth, 16, 1, false, 0, Math.PI);
       var toe = new THREE.Mesh(toeGeo, willowMat);
-      toe.position.set(0, -1.14, 0);
+      toe.position.set(0, -0.61, 0);
       toe.rotation.z = Math.PI / 2;
       toe.rotation.y = Math.PI / 2;
       toe.castShadow = true;
       batGroup.add(toe);
 
       // Blade shoulder bevel (top of blade)
-      var shoulderGeo = new THREE.CylinderGeometry(0.082, bladeWidth / 2, 0.10, 10);
+      var shoulderGeo = new THREE.CylinderGeometry(0.042, bladeWidth / 2, 0.05, 12);
       var bladeTop = new THREE.Mesh(shoulderGeo, willowMat);
-      bladeTop.position.y = -0.02;
+      bladeTop.position.y = -0.015;
       batGroup.add(bladeTop);
 
-      // Neon brand sticker panel on face (+Z)
-      var stickerGeo = new THREE.PlaneGeometry(0.235, 0.72);
+      // Holographic Brand Sticker on face (+Z)
+      var stickerGeo = new THREE.PlaneGeometry(0.088, 0.38);
       var sticker = new THREE.Mesh(stickerGeo, stickerMat);
-      sticker.position.set(0, -0.52, 0.048);
+      sticker.position.set(0, -0.30, 0.027);
       batGroup.add(sticker);
 
-      // Arched power spine ridge on back (-Z)
-      var spineRidgeGeo = new THREE.ConeGeometry(0.15, bladeLength * 0.90, 4);
+      // Power Spine ridge on back (-Z)
+      var spineRidgeGeo = new THREE.ConeGeometry(0.062, bladeLength * 0.90, 4);
       var spineRidge = new THREE.Mesh(spineRidgeGeo, spineMat);
       spineRidge.rotation.x = Math.PI;
       spineRidge.rotation.y = Math.PI / 4;
-      spineRidge.position.set(0, -0.55, -0.055);
-      spineRidge.scale.set(0.82, 1, 0.38);
+      spineRidge.position.set(0, -0.31, -0.032);
+      spineRidge.scale.set(0.85, 1, 0.36);
       batGroup.add(spineRidge);
 
-      // Edge bevel highlights (left and right edges)
-      var edgeMat = new THREE.MeshStandardMaterial({ color: 0xF5DEB3, roughness: 0.22, metalness: 0.03 });
-      var lEdgeGeo = new THREE.BoxGeometry(0.025, bladeLength, 0.025);
-      var lEdge = new THREE.Mesh(lEdgeGeo, edgeMat);
-      lEdge.position.set(-bladeWidth / 2 + 0.012, -0.58, 0);
-      batGroup.add(lEdge);
-      var rEdge = lEdge.clone();
-      rEdge.position.x = bladeWidth / 2 - 0.012;
-      batGroup.add(rEdge);
-
-      // VectorBat ESP32 Sensor Module on back spine
-      var sensorBoxGeo = new THREE.BoxGeometry(0.092, 0.165, 0.044);
-      var sensorBoxMat = new THREE.MeshStandardMaterial({ color: 0x0A0D18, roughness: 0.28, metalness: 0.82 });
+      // VectorBat ESP32 Sensor Pod on back spine
+      var sensorBoxGeo = new THREE.BoxGeometry(0.048, 0.088, 0.024);
+      var sensorBoxMat = new THREE.MeshStandardMaterial({ color: 0x0B0F19, roughness: 0.25, metalness: 0.85 });
       var sensorBox = new THREE.Mesh(sensorBoxGeo, sensorBoxMat);
-      sensorBox.position.set(0, -0.50, -0.080);
+      sensorBox.position.set(0, -0.28, -0.046);
       sensorBox.castShadow = true;
       batGroup.add(sensorBox);
 
-      // Sensor logo strip
-      var sDecalGeo = new THREE.PlaneGeometry(0.078, 0.048);
-      var sDecalMat = new THREE.MeshBasicMaterial({ color: 0x38BDF8 });
-      var sDecal = new THREE.Mesh(sDecalGeo, sDecalMat);
-      sDecal.rotation.y = Math.PI;
-      sDecal.position.set(0, -0.46, -0.103);
-      batGroup.add(sDecal);
-
-      // Active LED (glowing emerald dot)
-      var ledGeo = new THREE.SphereGeometry(0.011, 8, 8);
+      // Sensor Active Emerald LED
+      var ledGeo = new THREE.SphereGeometry(0.006, 8, 8);
       var ledMat = new THREE.MeshBasicMaterial({ color: 0x00FF88 });
       var sensorLed = new THREE.Mesh(ledGeo, ledMat);
-      sensorLed.position.set(0.034, -0.54, -0.103);
+      sensorLed.position.set(0.016, -0.30, -0.059);
       batGroup.add(sensorLed);
 
-      // Sweet Spot ring on face
-      var sweetGeo = new THREE.RingGeometry(0.048, 0.068, 36);
-      var sweetMat2 = new THREE.MeshBasicMaterial({ color: 0xFF9F1C, side: THREE.DoubleSide });
-      var sweetIndicator = new THREE.Mesh(sweetGeo, sweetMat2);
-      sweetIndicator.position.set(0, -0.55, 0.049);
-      batGroup.add(sweetIndicator);
+      // Sweet Spot target reticle on face (+Z)
+      var sweetGeo = new THREE.RingGeometry(0.022, 0.034, 32);
+      var sweetMat = new THREE.MeshBasicMaterial({ color: 0x00C97B, side: THREE.DoubleSide });
+      sweetSpotIndicator = new THREE.Mesh(sweetGeo, sweetMat);
+      sweetSpotIndicator.position.set(0, -0.36, 0.028);
+      batGroup.add(sweetSpotIndicator);
 
       // Initial Stance Orientation
       batPivot.quaternion.copy(currentStanceQuat);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // US-005: 3D DYNAMIC TRAJECTORY RIBBON TRAIL
+    // ─────────────────────────────────────────────────────────
     function setupTrail() {
-      // 3D dynamic trajectory ribbon trail
-      trailGeometry = new THREE.BufferGeometry();
-      var posArray = new Float32Array(maxTrailPoints * 3);
-      trailGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-      
-      var trailMat = new THREE.LineBasicMaterial({
-        color: 0x00C97B,
-        linewidth: 3,
+      // 1. Central laser-fine core line
+      trailCoreGeo = new THREE.BufferGeometry();
+      var corePos = new Float32Array(maxTrailPoints * 3);
+      trailCoreGeo.setAttribute('position', new THREE.BufferAttribute(corePos, 3));
+      var coreMat = new THREE.LineBasicMaterial({
+        color: 0x00FFB0,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.95,
         blending: THREE.AdditiveBlending
       });
-      trailLine = new THREE.Line(trailGeometry, trailMat);
-      trailLine.frustumCulled = false;
-      scene.add(trailLine);
+      trailCoreLine = new THREE.Line(trailCoreGeo, coreMat);
+      trailCoreLine.frustumCulled = false;
+      scene.add(trailCoreLine);
+
+      // 2. 3D Glowing Aerodynamic Ribbon Mesh (quad strip along blade normal)
+      trailRibbonGeo = new THREE.BufferGeometry();
+      var ribbonVerts = new Float32Array(maxTrailPoints * 2 * 3);
+      var ribbonColors = new Float32Array(maxTrailPoints * 2 * 4); // RGBA
+      var ribbonIndices = [];
+
+      for (var i = 0; i < maxTrailPoints - 1; i++) {
+        var v0 = i * 2;
+        var v1 = i * 2 + 1;
+        var v2 = (i + 1) * 2;
+        var v3 = (i + 1) * 2 + 1;
+        ribbonIndices.push(v0, v1, v2);
+        ribbonIndices.push(v1, v3, v2);
+      }
+
+      trailRibbonGeo.setAttribute('position', new THREE.BufferAttribute(ribbonVerts, 3));
+      trailRibbonGeo.setAttribute('color', new THREE.BufferAttribute(ribbonColors, 4));
+      trailRibbonGeo.setIndex(ribbonIndices);
+
+      var ribbonMat = new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      trailRibbonMesh = new THREE.Mesh(trailRibbonGeo, ribbonMat);
+      trailRibbonMesh.frustumCulled = false;
+      scene.add(trailRibbonMesh);
     }
 
     function addTrailPoint(vec3) {
-      trailPositions.unshift(vec3.clone());
+      // Compute blade normal for 3D ribbon width
+      var bladeNormal = new THREE.Vector3(1, 0, 0);
+      if (batGroup) {
+        bladeNormal.applyQuaternion(batPivot.quaternion).normalize();
+      }
+
+      trailPositions.unshift({
+        pos: vec3.clone(),
+        norm: bladeNormal.clone()
+      });
+
       if (trailPositions.length > maxTrailPoints) {
         trailPositions.pop();
       }
@@ -1156,20 +1202,77 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     }
 
     function updateTrailGeometry() {
-      var positions = trailGeometry.attributes.position.array;
+      if (!trailCoreGeo || !trailRibbonGeo) return;
+
+      var corePos = trailCoreGeo.attributes.position.array;
+      var ribbonPos = trailRibbonGeo.attributes.position.array;
+      var ribbonColors = trailRibbonGeo.attributes.color.array;
+      var count = trailPositions.length;
+
+      var halfWidth = 0.038; // 7.6 cm ribbon width
+
       for (var i = 0; i < maxTrailPoints; i++) {
-        if (i < trailPositions.length) {
-          positions[i * 3] = trailPositions[i].x;
-          positions[i * 3 + 1] = trailPositions[i].y;
-          positions[i * 3 + 2] = trailPositions[i].z;
-        } else if (trailPositions.length > 0) {
-          var last = trailPositions[trailPositions.length - 1];
-          positions[i * 3] = last.x;
-          positions[i * 3 + 1] = last.y;
-          positions[i * 3 + 2] = last.z;
+        var idx = i * 3;
+        var rIdx0 = (i * 2) * 3;
+        var rIdx1 = (i * 2 + 1) * 3;
+        var cIdx0 = (i * 2) * 4;
+        var cIdx1 = (i * 2 + 1) * 4;
+
+        if (i < count) {
+          var p = trailPositions[i].pos;
+          var n = trailPositions[i].norm;
+          var fade = 1.0 - (i / count);
+          var alpha = fade * fade * 0.85;
+
+          // Core line position
+          corePos[idx]     = p.x;
+          corePos[idx + 1] = p.y;
+          corePos[idx + 2] = p.z;
+
+          // Ribbon left & right vertices
+          ribbonPos[rIdx0]     = p.x - n.x * halfWidth * fade;
+          ribbonPos[rIdx0 + 1] = p.y - n.y * halfWidth * fade;
+          ribbonPos[rIdx0 + 2] = p.z - n.z * halfWidth * fade;
+
+          ribbonPos[rIdx1]     = p.x + n.x * halfWidth * fade;
+          ribbonPos[rIdx1 + 1] = p.y + n.y * halfWidth * fade;
+          ribbonPos[rIdx1 + 2] = p.z + n.z * halfWidth * fade;
+
+          // Color gradient: white-hot tip -> vibrant teal -> dark fade
+          var r = i < 3 ? 1.0 : (1.0 - fade) * 0.1;
+          var g = i < 3 ? 1.0 : 0.85 * fade;
+          var b = i < 3 ? 1.0 : 0.65;
+
+          ribbonColors[cIdx0]     = r;
+          ribbonColors[cIdx0 + 1] = g;
+          ribbonColors[cIdx0 + 2] = b;
+          ribbonColors[cIdx0 + 3] = alpha;
+
+          ribbonColors[cIdx1]     = r;
+          ribbonColors[cIdx1 + 1] = g;
+          ribbonColors[cIdx1 + 2] = b;
+          ribbonColors[cIdx1 + 3] = alpha;
+        } else if (count > 0) {
+          var last = trailPositions[count - 1].pos;
+          corePos[idx]     = last.x;
+          corePos[idx + 1] = last.y;
+          corePos[idx + 2] = last.z;
+
+          ribbonPos[rIdx0]     = last.x;
+          ribbonPos[rIdx0 + 1] = last.y;
+          ribbonPos[rIdx0 + 2] = last.z;
+          ribbonPos[rIdx1]     = last.x;
+          ribbonPos[rIdx1 + 1] = last.y;
+          ribbonPos[rIdx1 + 2] = last.z;
+
+          ribbonColors[cIdx0 + 3] = 0;
+          ribbonColors[cIdx1 + 3] = 0;
         }
       }
-      trailGeometry.attributes.position.needsUpdate = true;
+
+      trailCoreGeo.attributes.position.needsUpdate = true;
+      trailRibbonGeo.attributes.position.needsUpdate = true;
+      trailRibbonGeo.attributes.color.needsUpdate = true;
     }
 
     function clearTrail() {
@@ -1177,14 +1280,38 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       updateTrailGeometry();
     }
 
+    function getSweetSpotWorldPos() {
+      var pos = new THREE.Vector3(0, -0.36, 0.028);
+      if (batGroup) batGroup.localToWorld(pos);
+      return pos;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // US-005: SWEET SPOT IMPACT FX & CONTACT CRACK
+    // ─────────────────────────────────────────────────────────
     function setupImpactFX() {
-      // Particle sparks burst at impact
-      for (var i = 0; i < 35; i++) {
-        var pGeo = new THREE.SphereGeometry(0.016, 6, 6);
+      // 1. Expanding radial shockwave ring on bat blade face
+      var ringGeo = new THREE.RingGeometry(0.016, 0.026, 32);
+      var ringMat = new THREE.MeshBasicMaterial({
+        color: 0x00FF88,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending
+      });
+      impactShockwave = new THREE.Mesh(ringGeo, ringMat);
+      impactShockwave.position.set(0, -0.36, 0.030);
+      impactShockwave.visible = false;
+      batGroup.add(impactShockwave);
+
+      // 2. High-energy spark particles
+      for (var i = 0; i < 40; i++) {
+        var pGeo = new THREE.SphereGeometry(0.012, 6, 6);
         var pMat = new THREE.MeshBasicMaterial({
-          color: i % 2 === 0 ? 0xFF9F1C : 0xFFFFFF,
+          color: i % 3 === 0 ? 0xFFFFFF : (i % 3 === 1 ? 0x00FF88 : 0xFF9F1C),
           transparent: true,
-          opacity: 0
+          opacity: 0,
+          blending: THREE.AdditiveBlending
         });
         var pMesh = new THREE.Mesh(pGeo, pMat);
         scene.add(pMesh);
@@ -1192,19 +1319,26 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           mesh: pMesh,
           vel: new THREE.Vector3(),
           life: 0,
-          maxLife: 0.4
+          maxLife: 0.45
         });
       }
     }
 
     function triggerImpactFX(sweetSpotWorldPos) {
       impactLight.position.copy(sweetSpotWorldPos);
-      impactLight.intensity = 15;
-      
+      impactLight.intensity = 18;
+
       // Flash blade
       if (bladeMesh) {
-        bladeMesh.material.emissive = new THREE.Color(0xFF6600);
-        bladeMesh.material.emissiveIntensity = 1.2;
+        bladeMesh.material.emissive = new THREE.Color(0x00FF88);
+        bladeMesh.material.emissiveIntensity = 1.0;
+      }
+
+      // Trigger expanding shockwave ripple
+      if (impactShockwave) {
+        impactShockwave.visible = true;
+        impactShockwave.scale.set(1, 1, 1);
+        impactShockwave.material.opacity = 1.0;
       }
 
       // Spark particles explosion
@@ -1221,14 +1355,14 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       }
 
       // Show Impact Banner
-      impactValEl.textContent = currentShotParams.impactG + 'g';
+      impactValEl.textContent = (currentShotParams.impactG || 1.2) + 'g';
       impactBanner.className = 'active';
       setTimeout(function() {
         impactBanner.className = '';
-      }, 700);
+      }, 750);
 
       // Play authentic bat contact crack sound
-      playImpactSound(currentShotParams.impactG);
+      playImpactSound(currentShotParams.impactG || 15);
 
       // Post message back to parent React Native component
       postParentMessage({
@@ -1243,6 +1377,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       }
       if (bladeMesh && bladeMesh.material.emissiveIntensity > 0) {
         bladeMesh.material.emissiveIntensity = Math.max(0, bladeMesh.material.emissiveIntensity - dt * 2.5);
+      }
+      if (impactShockwave && impactShockwave.visible) {
+        impactShockwave.scale.addScalar(dt * 7.0);
+        impactShockwave.material.opacity = Math.max(0, impactShockwave.material.opacity - dt * 3.2);
+        if (impactShockwave.material.opacity <= 0.02) {
+          impactShockwave.visible = false;
+        }
       }
       for (var i = 0; i < impactParticles.length; i++) {
         var p = impactParticles[i];
@@ -1284,9 +1425,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         }, 2400);
 
         // Flash blade & sweet spot particles
-        var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-        batGroup.localToWorld(sweetSpotWorld);
-        triggerImpactFX(sweetSpotWorld);
+        triggerImpactFX(getSweetSpotWorldPos());
 
         // Play crisp audio contact sound
         playImpactSound(currentShotParams.impactG || 15);
@@ -1326,8 +1465,8 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         ribbonColor = 0xF43F5E; // Rose Neon
       }
 
-      if (trailLine && trailLine.material) {
-        trailLine.material.color.setHex(ribbonColor);
+      if (trailCoreLine && trailCoreLine.material) {
+        trailCoreLine.material.color.setHex(ribbonColor);
       }
       
       // Set 1.25s cinematic duration for fully visible biomechanical stroke
@@ -1342,7 +1481,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       // Natural crease stance baseline: bat blade points down to pitch, slight angle back to slips
       var rx = 0.15, ry = -0.15, rz = 0.0;
       var px = 0, py = 0, pz = 0, bodyYaw = 0;
-      var handsX = 0.12, handsY = 1.10, handsZ = 0.18;
+      var handsX = 0.10, handsY = 0.96, handsZ = 0.15;
       var phaseLabel = 'READY';
 
       if (shot.indexOf('cover') >= 0) {
@@ -1377,9 +1516,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#FFD700';
           phaseIndicator.style.color = '#FFD700';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
@@ -1437,9 +1574,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#38BDF8';
           phaseIndicator.style.color = '#38BDF8';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
@@ -1494,9 +1629,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#00C97B';
           phaseIndicator.style.color = '#00C97B';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
@@ -1556,9 +1689,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#EF4444';
           phaseIndicator.style.color = '#EF4444';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
@@ -1619,9 +1750,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#A855F7';
           phaseIndicator.style.color = '#A855F7';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
@@ -1676,9 +1805,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#E2E8F0';
           phaseIndicator.style.color = '#E2E8F0';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else {
           var t = (progress - 0.85) / 0.15;
@@ -1726,9 +1853,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#F97316';
           phaseIndicator.style.color = '#F97316';
           if (swingTime - dt < 0.58 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
@@ -1784,9 +1909,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           phaseIndicator.style.borderColor = '#F43F5E';
           phaseIndicator.style.color = '#F43F5E';
           if (swingTime - dt < 0.54 * swingDuration) {
-            var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-            batGroup.localToWorld(sweetSpotWorld);
-            triggerImpactFX(sweetSpotWorld);
+            triggerImpactFX(getSweetSpotWorldPos());
           }
         } else if (progress < 0.88) {
           // The 360-degree helicopter whirl overhead!
@@ -1848,19 +1971,19 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         batsmanGroup.position.set(px, py, 0.40 + pz);
       }
 
-      // Sample blade tip world position for dynamic swing trajectory trail
-      var tipWorld = new THREE.Vector3(0, -1.05, 0);
-      batGroup.localToWorld(tipWorld);
-      addTrailPoint(tipWorld);
+      // Sample bat sweet spot world position for dynamic swing trajectory trail
+      var sweetWorld = new THREE.Vector3(0, -0.36, 0.028);
+      batGroup.localToWorld(sweetWorld);
+      addTrailPoint(sweetWorld);
 
       if (progress >= 1.0) {
         isSwinging = false;
         if (batsmanGroup) {
           batsmanGroup.rotation.y = 0;
-          batsmanGroup.position.set(0, 0, 0.30);
+          batsmanGroup.position.set(0, 0, 0.15);
         }
         if (displayMode === 'batsman') {
-          batPivot.position.set(0.16, 1.42, 0.22);
+          batPivot.position.set(0.10, 0.96, 0.15);
         }
         var baseQ = getBaseStanceQuat();
         currentStanceQuat.copy(baseQ);
@@ -1877,27 +2000,33 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     }
 
     function updateCameraPosition() {
+      var isPortrait = window.innerWidth < window.innerHeight;
+      var distMultiplier = isPortrait ? 1.55 : 1.0;
+
       if (cameraAngle === 'side') {
-        orbit.theta = 0.05;
-        orbit.phi = 0.18;
-        orbit.radius = 2.20;  // tighter — batsman fills frame
+        orbit.theta = 0.06;
+        orbit.phi = 0.16;
+        orbit.radius = 2.40 * distMultiplier;
       } else if (cameraAngle === 'bowler') {
-        orbit.theta = Math.PI / 2 + 0.08;
-        orbit.phi = 0.20;
-        orbit.radius = 2.60;
+        orbit.theta = Math.PI / 2 + 0.06;
+        orbit.phi = 0.18;
+        orbit.radius = 2.80 * distMultiplier;
       } else if (cameraAngle === 'top') {
         orbit.theta = 0.10;
-        orbit.phi = 1.20;
-        orbit.radius = 2.80;
+        orbit.phi = 1.15;
+        orbit.radius = 3.00 * distMultiplier;
       } else if (cameraAngle === 'batsman') {
         orbit.theta = -Math.PI / 2 + 0.22;
         orbit.phi = 0.14;
-        orbit.radius = 1.90;
+        orbit.radius = 2.20 * distMultiplier;
       }
+
+      var lookHeight = 0.88;
+      lookTarget.set(0, lookHeight, 0.05);
 
       var cp = new THREE.Vector3(
         orbit.radius * Math.cos(orbit.phi) * Math.sin(orbit.theta),
-        orbit.radius * Math.sin(orbit.phi) + 0.65,
+        orbit.radius * Math.sin(orbit.phi) + lookHeight,
         orbit.radius * Math.cos(orbit.phi) * Math.cos(orbit.theta)
       );
       camera.position.copy(cp);
@@ -1932,7 +2061,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
 
         var cp = new THREE.Vector3(
           orbit.radius * Math.cos(orbit.phi) * Math.sin(orbit.theta),
-          orbit.radius * Math.sin(orbit.phi) + 0.65,
+          orbit.radius * Math.sin(orbit.phi) + 0.88,
           orbit.radius * Math.cos(orbit.phi) * Math.cos(orbit.theta)
         );
         camera.position.copy(cp);
@@ -1958,9 +2087,11 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       window.addEventListener('resize', function() {
         var W = window.innerWidth, H = window.innerHeight;
         camera.aspect = W / H;
+        camera.fov = W < H ? 46 : 38;
         camera.updateProjectionMatrix();
         renderer.setSize(W, H);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+        updateCameraPosition();
       });
 
       // Spacebar shortcut to swing
@@ -2016,21 +2147,21 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         batPivot.rotation.x += idlePitch;
       }
 
-      // Real-time blade tip velocity tracking & dynamic trajectory ribbon trail
+      // Real-time sweet spot velocity tracking & dynamic trajectory ribbon trail
       if (bladeMesh && batGroup) {
-        var tipWorld = new THREE.Vector3(0, -1.05, 0);
-        batGroup.localToWorld(tipWorld);
+        var sweetWorld = new THREE.Vector3(0, -0.36, 0.028);
+        batGroup.localToWorld(sweetWorld);
         if (lastTipPos.lengthSq() > 0) {
-          var dist = tipWorld.distanceTo(lastTipPos);
+          var dist = sweetWorld.distanceTo(lastTipPos);
           var tipSpeed = dt > 0 ? dist / dt : 0;
-          if (tipSpeed > 0.8) {
-            addTrailPoint(tipWorld);
+          if (tipSpeed > 0.5) {
+            addTrailPoint(sweetWorld);
           } else if (trailPositions.length > 0) {
-            trailPositions.shift();
-            trailGeometry.attributes.position.needsUpdate = true;
+            trailPositions.pop();
+            updateTrailGeometry();
           }
         }
-        lastTipPos.copy(tipWorld);
+        lastTipPos.copy(sweetWorld);
       }
 
       updateImpactFX(dt);
@@ -2178,9 +2309,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
             if (gMag > 2.8 && nowMs - lastImpactFxTime > 800) {
               lastImpactFxTime = nowMs;
               currentShotParams.impactG = Math.round(gMag * 10) / 10;
-              var sweetSpotWorld = new THREE.Vector3(0, -0.52, 0.045);
-              batGroup.localToWorld(sweetSpotWorld);
-              triggerImpactFX(sweetSpotWorld);
+              triggerImpactFX(getSweetSpotWorldPos());
             }
           }
         } else if (msg.type === 'setSound') {
