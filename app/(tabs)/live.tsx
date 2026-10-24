@@ -75,8 +75,8 @@ export default function LiveSwingScreen() {
   const [autoPitcher, setAutoPitcher] = useState(false);
   const autoPitcherTimerRef = useRef<any>(null);
 
-  // Visualizer Display Mode ('batsman' in crease vs 'free_bat' 360 unconstrained)
-  const [displayMode, setDisplayMode] = useState<'batsman' | 'free_bat'>('batsman');
+  // Visualizer Display Mode ('virat' rigged 3D cricketer vs 'batsman' in crease vs 'free_bat' 360 unconstrained)
+  const [displayMode, setDisplayMode] = useState<'virat' | 'batsman' | 'free_bat'>('virat');
 
   // Stance Calibration & Sensor Mounting State (Device mounted on back spine of bat)
   const [isStanceCalibrated, setIsStanceCalibrated] = useState(false);
@@ -674,17 +674,21 @@ export default function LiveSwingScreen() {
               </Pressable>
             ))}
 
-            {/* Free 3D Bat Mode Toggle */}
+            {/* 3D Mode Toggle: Virat Kohli / Procedural Batsman / Free 3D Bat */}
             <Pressable
-              style={[styles.camPill, displayMode === 'free_bat' && styles.camPillActive, { borderColor: '#00C97B' }]}
+              style={[
+                styles.camPill,
+                displayMode !== 'batsman' && styles.camPillActive,
+                { borderColor: displayMode === 'virat' ? '#F59E0B' : displayMode === 'free_bat' ? '#00C97B' : '#38BDF8' }
+              ]}
               onPress={() => {
-                const next = displayMode === 'batsman' ? 'free_bat' : 'batsman';
+                const next = displayMode === 'virat' ? 'batsman' : displayMode === 'batsman' ? 'free_bat' : 'virat';
                 setDisplayMode(next);
                 visualizerRef.current?.setDisplayMode?.(next);
               }}
             >
-              <Text style={[styles.camPillText, displayMode === 'free_bat' && styles.camPillTextActive, { color: displayMode === 'free_bat' ? '#00C97B' : '#94A3B8' }]}>
-                {displayMode === 'free_bat' ? '🪄 360° BAT' : '🏏 CREASE'}
+              <Text style={[styles.camPillText, styles.camPillTextActive, { color: displayMode === 'virat' ? '#F59E0B' : displayMode === 'free_bat' ? '#00C97B' : '#38BDF8' }]}>
+                {displayMode === 'virat' ? '👑 VIRAT' : displayMode === 'free_bat' ? '🪄 360° BAT' : '🏏 CREASE'}
               </Text>
             </Pressable>
 

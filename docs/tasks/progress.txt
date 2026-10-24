@@ -69,3 +69,25 @@ Started: Sat Oct 24 2026
   - Wrists never disconnect, stretch, or float away from the bat in stance, demo strokes, or live sensor motion.
 - **Verification:** `npx tsc --noEmit` passed with 0 errors. Verified in live browser canvas. Committed as `4a274d1`.
 ---
+
+## 2026-10-25 - 3D Rigged Virat Kohli GLB Cricketer Model Integration & Authentic Batting Animation
+- **Asset Integration:**
+  - Integrated user's 3D low-poly model `virat_kohli_cricket_batting_animation_-_low_poly.glb` (4.89MB self-contained GLB with embedded PBR textures).
+  - Stored model in `public/models/virat_kohli.glb` and `assets/models/virat_kohli.glb`.
+  - Added CDN loader `https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js` into visualizer iframe.
+- **Model Rig & Skeletal Playback:**
+  - Loaded rigged 60-bone skeleton (`mixamorig:...`) and textured batsman mesh + cricket bat mesh (`Cricket Bat_Cricket Bat_0`).
+  - Scaled and normalized to 1.82m international athletic height, positioned precisely at the popping crease ($z = 0.20$), and aligned side-on along pitch axis facing the bowler ($+Z$).
+  - Bound dual embedded animation clips (`Virat Playing Cricket` with 122 channels and `Cricket Bat Animation` with 3 channels) onto a unified `THREE.AnimationMixer`.
+  - Stance held at frame 0 for realistic ready stance pose; full cinematic stroke playback triggered on swing with smooth 1.2s follow-through pause and auto-return to stance.
+  - Sweet spot ribbon trail dynamically tracks `viratBatMesh.localToWorld(new THREE.Vector3(0, 1.5, 0))` with particle spark contact FX and audio thwack timed to downswing impact.
+- **Display Mode Switcher:**
+  - Supported 3-way mode switching via in-canvas HUD badge pill and native React Native button:
+    1. `👑 VIRAT` (`👑 VIRAT KOHLI 3D`): photorealistic rigged international cricketer.
+    2. `🏏 CREASE` (`🏏 BATSMAN STANCE`): procedural cricketer with pro batting gloves & 2-bone arm IK.
+    3. `🪄 360° BAT` (`🪄 FREE 3D BAT`): unconstrained 360° bat telemetry inspection.
+  - Graceful fallback: If offline or GLB fails to fetch, cleanly defaults to procedural batsman with zero crash.
+- **Verification:**
+  - TypeScript check: `npx tsc --noEmit` passed with 0 errors.
+  - In-browser runtime check: Loaded `http://localhost:8081/live` and verified model rendering, stance, HUD, camera framing, and cover drive swing playback with screenshots `virat_stance_1792877464534.png` and `virat_cover_drive_swing_1792877474421.png`.
+---
