@@ -114,6 +114,66 @@
       "priority": 8,
       "passes": true,
       "notes": "Aligned swing stroke kinematics to textbook cricket mechanics with dynamic hands, arms, body lean, and color-coded aerodynamic trajectory trails."
+    },
+    {
+      "id": "US-009",
+      "title": "Anatomical 2-Handed Glove Grip & Dynamic Forearm/Elbow Kinematics",
+      "description": "As a cricketer, I want the batsman's hands to grip the bat naturally with textbook top-hand and bottom-hand positioning and articulated forearms/elbows that stay pinned to the handle throughout the swing.",
+      "acceptanceCriteria": [
+        "Top (left) hand wraps firmly around upper handle with knuckles aligned towards off-side/cover",
+        "Bottom (right) hand holds lower handle with 'V' between thumb and index finger aligned down bat spine",
+        "Batting gloves feature distinct segmented finger sausage rolls, reinforced thumb guards, and leather palm wrap around rubber grip",
+        "Forearms and elbows dynamically track glove positions on the handle throughout all swing phases so wrists never disconnect or stretch unnaturally",
+        "High leading elbow posture maintained during backlift and drive downswing",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Authentic Cricket Biomechanics: Footwork, Weight Transfer & Knee Flexion",
+      "description": "As a cricketer, I want realistic cricket footwork with front-knee flexion and rear heel lift on drives, and back-foot pivot and torso swivel on pull/cut shots.",
+      "acceptanceCriteria": [
+        "Front-Foot Drives (Cover, Straight, On Drive, Defence): Front leg strides forward with 45° bent knee over popping crease; rear foot rises onto toe with heel lifted off turf",
+        "Back-Foot Strokes (Pull Shot, Square Cut): Weight transfers back onto flexed rear knee; torso swivels on ball of rear foot; front leg acts as stabilizing pivot",
+        "Spiked cricket boots remain grounded on turf surface without clipping or floating",
+        "Natural hip tilt, torso spine angle, and shoulder alignment coordinated with swing phase",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Head-Over-Ball Balance, Level Eyes & Willow Presentation Accuracy",
+      "description": "As a cricketer, I want the batsman to maintain a still head over the contact point with level eyes, presenting the full face of the willow blade squarely to the ball.",
+      "acceptanceCriteria": [
+        "Head remains rock-still with level horizontal eye-line focused down pitch at incoming ball throughout stroke",
+        "Bat comes down smoothly on line from 2nd slip corridor, presenting full face of the willow blade to the ball at impact",
+        "Wrist roll-over at contact for grounded drives; iconic high follow-through showing maker's decal to bowler",
+        "Ball impact synchronization: willow crack audio and radial shockwave trigger precisely when sweet spot reaches front pad line",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Anatomical Human Musculature, Jersey Cloth Shading & Equipment Polish",
+      "description": "As a user, I want the 3D cricketer to have natural athletic proportions, shoulder deltoids, thigh guard contours, and realistic test match cricket whites fabric shading.",
+      "acceptanceCriteria": [
+        "Anatomical shoulder deltoids, defined neck, chest taper, and thigh guard contour under cricket trousers",
+        "PBR fabric roughness and subtle creases on white cricket test jersey and trousers",
+        "High-definition English willow grain, cane spring handle laminations, and embossed holographic decals",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

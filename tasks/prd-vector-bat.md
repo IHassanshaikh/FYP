@@ -44,3 +44,26 @@ Vector Bat is a smart cricket bat analysis application connecting ESP32 MPU6050/
 - [x] Broadcast TV camera presets (`side`, `bowler`, `batsman`, `top`) with clean headroom framing.
 - [x] Typecheck passes.
 
+### US-009: Anatomical 2-handed glove grip & dynamic forearm/elbow kinematics
+- [ ] Top (left) hand wraps firmly on upper handle; bottom (right) hand holds lower handle with 'V' grip along spine.
+- [ ] Batting gloves with segmented finger rolls and leather palm wrap around rubber grip.
+- [ ] Forearms and elbows dynamically track glove coordinates throughout all swing phases.
+- [ ] Typecheck passes.
+
+### US-010: Authentic cricket biomechanics: footwork, weight transfer & knee flexion
+- [ ] Front-foot stride with 45° knee flexion and rear heel lift on drives.
+- [ ] Back-foot weight transfer, rear knee bend, and torso swivel on pull/cut strokes.
+- [ ] Spiked boots remain grounded without clipping.
+- [ ] Typecheck passes.
+
+### US-011: Head-over-ball balance, level eyes & willow presentation accuracy
+- [ ] Head still and eyes horizontal over contact point.
+- [ ] Full face of willow presented on line of ball with wrist roll-over on grounded strokes.
+- [ ] Ball impact synchronization with sweet spot at front pad line.
+- [ ] Typecheck passes.
+
+### US-012: Anatomical human musculature, jersey cloth shading & equipment polish
+- [ ] Shoulder deltoids, defined neck, chest taper, and thigh guard contour.
+- [ ] PBR fabric roughness and creases on test cricket whites.
+- [ ] Typecheck passes.
+
