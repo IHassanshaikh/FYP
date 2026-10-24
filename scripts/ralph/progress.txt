@@ -38,3 +38,21 @@ Started: Sat Oct 24 2026
   - `npx tsc --noEmit` passed with 0 errors.
   - Expo dev server running with hot-reload active.
 ---
+
+## 2026-10-24 - US-006, US-007 & US-008: Side-On Batsman Biomechanics, Photorealistic Pitch & Stadium
+- **What was implemented:**
+  - **Textbook Side-On Batting Stance (US-006):** Re-engineered the 3D cricketer from front-on cartoon to an authentic side-on biomechanical cricket stance. Chest aligned along the crease (+X), front left leg planted forward towards bowler with 25° knee flexion, rear right leg bearing 55% weight, head turned 75° over front shoulder with gaze locked down the pitch at the bowler (+Z).
+  - **High-Detail Protective Gear (US-006):** Pro 7-cane bolster batting pads with molded knee roll wings and ankle wraps; pro multi-segment finger roll batting gloves gripping handle in textbook two-handed 'V' grip; carbon composite helmet shell with StemGuard rear neck protector and double-bar titanium face grille.
+  - **Photorealistic Clay Pitch & Outfield (US-007):** Canvas-baked clay-loam cricket pitch with grass fringes, batsman popping crease footmark spike scuffs, crisp regulation chalk popping and bowling creases. Outfield rendered with Lord's-style concentric radial lawn mowing stripes.
+  - **Atmospheric Stadium Lighting (US-007):** 4 tall lattice steel floodlight towers with 6-LED bank heads and soft halo lens flare sprites, glowing boundary ring, and soft contact shadows under cleats and bat toe.
+  - **Broadcast Camera Angles (US-006):** Accurately tuned TV broadcast presets (`side` = off-side cover/point replay camera with full headroom clearance, `bowler` = main TV camera from bowler's end, `batsman` = keeper/umpire POV behind stumps, `top` = bird's-eye tactical view).
+  - **Kinematic Stroke Synchronisation (US-008):** Smooth dynamic linkage between hands, bat handle, forearms, and body lean across all 8 stroke types.
+- **Files changed:**
+  - `components/LiveSwingVisualizer.tsx`
+  - `scripts/ralph/prd.json`
+  - `scripts/ralph/progress.txt`
+- **Verification:**
+  - `npx tsc --noEmit` exited with code 0 (zero errors).
+  - Verified visual output via browser subagent screenshots (`live_stadium_updated_framing_1792863885582.png`).
+---
+

@@ -490,13 +490,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         }
         if (batsmanGroup) batsmanGroup.visible = true;
         if (batPivot) {
-          batPivot.position.set(0.10, 0.96, 0.15);
+          batPivot.position.set(0.12, 0.94, 0.14);
           batPivot.scale.set(1.0, 1.0, 1.0);
         }
         if (batGroup) {
           batGroup.position.set(0, 0, 0);
         }
-        lookTarget.set(0, 0.90, 0.05);
+        lookTarget.set(0.02, 0.88, 0.18);
       }
       // Re-align to appropriate base stance
       var baseQ = getBaseStanceQuat();
@@ -581,94 +581,200 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       scene.add(impactLight);
     }
 
+    function makeHaloTex() {
+      return makeCanvasTex(128, 128, function(ctx, w, h) {
+        var g = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, w/2);
+        g.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        g.addColorStop(0.25, 'rgba(210, 240, 255, 0.65)');
+        g.addColorStop(0.60, 'rgba(0, 201, 123, 0.20)');
+        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      });
+    }
+
+    function makeOutfieldTex() {
+      return makeCanvasTex(512, 512, function(ctx, w, h) {
+        // Deep emerald outfield base
+        ctx.fillStyle = '#0F2617';
+        ctx.fillRect(0, 0, w, h);
+        // Concentric radial lawn mower rings
+        var cx = w / 2, cy = h / 2;
+        for (var r = 16; r < w; r += 26) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = ((Math.round(r / 26) % 2) === 0) ? 'rgba(34, 197, 94, 0.16)' : 'rgba(5, 46, 22, 0.30)';
+          ctx.lineWidth = 15;
+          ctx.stroke();
+        }
+        // Subtle grass blade flecks
+        ctx.fillStyle = 'rgba(74, 222, 128, 0.08)';
+        for (var i = 0; i < 900; i++) {
+          var rx = Math.random() * w, ry = Math.random() * h;
+          ctx.fillRect(rx, ry, 2, 3);
+        }
+      });
+    }
+
+    function makePitchTex() {
+      return makeCanvasTex(256, 1024, function(ctx, w, h) {
+        // Clay-loam cricket pitch base (warm tan-straw color gradient)
+        var grad = ctx.createLinearGradient(0, 0, w, 0);
+        grad.addColorStop(0, '#5C4A32');
+        grad.addColorStop(0.12, '#8C7352');
+        grad.addColorStop(0.50, '#B39870');
+        grad.addColorStop(0.88, '#8C7352');
+        grad.addColorStop(1, '#5C4A32');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Grass fringe along edges
+        ctx.fillStyle = 'rgba(21, 53, 35, 0.45)';
+        ctx.fillRect(0, 0, 14, h);
+        ctx.fillRect(w - 14, 0, 14, h);
+
+        // Soil texture noise & seam lines
+        ctx.strokeStyle = 'rgba(60, 45, 25, 0.22)';
+        ctx.lineWidth = 1.2;
+        for (var y = 0; y < h; y += 14) {
+          ctx.beginPath();
+          ctx.moveTo(10, y + (Math.sin(y * 0.1) * 3));
+          ctx.lineTo(w - 10, y + (Math.cos(y * 0.12) * 3));
+          ctx.stroke();
+        }
+
+        // Batsman popping crease footmark scuffs (authentic spike indentation wear patch)
+        var scuffGrad = ctx.createRadialGradient(w * 0.48, h * 0.42, 4, w * 0.48, h * 0.42, 52);
+        scuffGrad.addColorStop(0, 'rgba(45, 32, 16, 0.65)');
+        scuffGrad.addColorStop(0.6, 'rgba(80, 60, 35, 0.35)');
+        scuffGrad.addColorStop(1, 'rgba(179, 152, 112, 0)');
+        ctx.fillStyle = scuffGrad;
+        ctx.beginPath();
+        ctx.ellipse(w * 0.48, h * 0.42, 45, 68, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White Crease Markings on pitch surface
+        ctx.fillStyle = '#FFFFFF';
+        // Popping crease line (1.22m in front of bowling crease)
+        ctx.fillRect(14, h * 0.40, w - 28, 6);
+        // Stumps bowling crease
+        ctx.fillRect(28, h * 0.24, w - 56, 4);
+        // Return creases
+        ctx.fillRect(28, h * 0.24, 4, h * 0.20);
+        ctx.fillRect(w - 32, h * 0.24, 4, h * 0.20);
+      });
+    }
+
     function buildStadium() {
-      // Grass turf ground
-      var turfGeo = new THREE.CircleGeometry(16, 48);
-      var turfMat = new THREE.MeshPhongMaterial({
-        color: 0x14281D,
-        shininess: 8,
+      // Outfield ground with radial lawn stripes
+      var outfieldTex = makeOutfieldTex();
+      var turfGeo = new THREE.CircleGeometry(16, 64);
+      var turfMat = new THREE.MeshStandardMaterial({
+        map: outfieldTex,
+        roughness: 0.72,
+        metalness: 0.04
       });
       var turf = new THREE.Mesh(turfGeo, turfMat);
       turf.rotation.x = -Math.PI / 2;
       turf.receiveShadow = true;
       scene.add(turf);
 
-      // Glowing outer boundary circle
-      var ringGeo = new THREE.RingGeometry(15.6, 15.9, 64);
+      // Glowing outer boundary line with cushions
+      var ringGeo = new THREE.RingGeometry(15.5, 15.8, 64);
       var ringMat = new THREE.MeshBasicMaterial({
         color: 0x00C97B,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.4
+        opacity: 0.65
       });
       var ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.002;
+      ring.position.y = 0.003;
       scene.add(ring);
 
       // Stadium boundary perimeter billboard
-      var standsGeo = new THREE.CylinderGeometry(18, 18, 4, 48, 1, true);
-      var standsMat = new THREE.MeshPhongMaterial({
-        color: 0x0F172A,
-        side: THREE.BackSide,
-        shininess: 12
+      var standsGeo = new THREE.CylinderGeometry(18, 18, 5, 48, 1, true);
+      var standsMat = new THREE.MeshStandardMaterial({
+        color: 0x071120,
+        roughness: 0.85,
+        metalness: 0.15,
+        side: THREE.BackSide
       });
       var stands = new THREE.Mesh(standsGeo, standsMat);
-      stands.position.y = 2;
+      stands.position.y = 2.5;
       scene.add(stands);
 
-      // Decorative stadium lights in distance
-      for (var a = 0; a < Math.PI * 2; a += Math.PI / 2) {
-        var poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 7, 8);
-        var poleMat = new THREE.MeshPhongMaterial({ color: 0x334155 });
+      // 4 Realistic Stadium Floodlight Towers with soft halo flares
+      var haloTex = makeHaloTex();
+      var towerAngles = [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75];
+      for (var ti = 0; ti < towerAngles.length; ti++) {
+        var a = towerAngles[ti];
+        var px = Math.cos(a) * 16.8;
+        var pz = Math.sin(a) * 16.8;
+
+        // Lattice Steel Tower Mast
+        var poleGeo = new THREE.CylinderGeometry(0.12, 0.22, 8.5, 8);
+        var poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
         var pole = new THREE.Mesh(poleGeo, poleMat);
-        pole.position.set(Math.cos(a) * 16.5, 3.5, Math.sin(a) * 16.5);
+        pole.position.set(px, 4.25, pz);
         scene.add(pole);
 
-        var lampGeo = new THREE.BoxGeometry(1.2, 0.6, 0.4);
-        var lampMat = new THREE.MeshBasicMaterial({ color: 0xE2F1FF });
-        var lamp = new THREE.Mesh(lampGeo, lampMat);
-        lamp.position.set(Math.cos(a) * 16.5, 7.2, Math.sin(a) * 16.5);
-        lamp.lookAt(0, 1, 0);
-        scene.add(lamp);
+        // 6-LED Bank Luminaire Head
+        var headGroup = new THREE.Group();
+        headGroup.position.set(px, 8.6, pz);
+        headGroup.lookAt(0, 1.2, 0);
+
+        var lampFrame = new THREE.Mesh(
+          new THREE.BoxGeometry(1.4, 0.8, 0.25),
+          new THREE.MeshStandardMaterial({ color: 0x1E293B, roughness: 0.4 })
+        );
+        headGroup.add(lampFrame);
+
+        var lampGlow = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.3, 0.7),
+          new THREE.MeshBasicMaterial({ color: 0xEEF8FF })
+        );
+        lampGlow.position.z = 0.13;
+        headGroup.add(lampGlow);
+
+        // Soft halo flare sprite
+        var spriteMat = new THREE.SpriteMaterial({
+          map: haloTex,
+          color: 0xFFFFFF,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending
+        });
+        var flareSprite = new THREE.Sprite(spriteMat);
+        flareSprite.scale.set(3.5, 3.5, 1.0);
+        flareSprite.position.set(px, 8.6, pz);
+        scene.add(flareSprite);
+
+        scene.add(headGroup);
       }
     }
 
     function buildPitchAndStumps() {
-      // Pitch strip
-      var pitchGeo = new THREE.PlaneGeometry(2.4, 7.5);
-      var pitchMat = new THREE.MeshPhongMaterial({
-        color: 0x2A3528,
-        shininess: 10
+      // Pitch strip with clay-straw canvas texture & crease markings
+      var pitchTex = makePitchTex();
+      var pitchGeo = new THREE.PlaneGeometry(2.4, 8.0);
+      var pitchMat = new THREE.MeshStandardMaterial({
+        map: pitchTex,
+        roughness: 0.85,
+        metalness: 0.02
       });
       var pitch = new THREE.Mesh(pitchGeo, pitchMat);
       pitch.rotation.x = -Math.PI / 2;
-      pitch.position.set(0, 0.005, 0.5);
+      pitch.position.set(0, 0.005, 0.35);
       pitch.receiveShadow = true;
       scene.add(pitch);
 
-      // White crease markings
-      var creaseMat = new THREE.MeshBasicMaterial({ color: 0xE2E8F0, transparent: true, opacity: 0.8 });
-      // Batting popping crease
-      var popGeo = new THREE.PlaneGeometry(2.2, 0.06);
-      var pop = new THREE.Mesh(popGeo, creaseMat);
-      pop.rotation.x = -Math.PI / 2;
-      pop.position.set(0, 0.008, 0.45);
-      scene.add(pop);
-
-      // Stumps crease
-      var stCreaseGeo = new THREE.PlaneGeometry(1.6, 0.05);
-      var stCrease = new THREE.Mesh(stCreaseGeo, creaseMat);
-      stCrease.rotation.x = -Math.PI / 2;
-      stCrease.position.set(0, 0.008, -0.65);
-      scene.add(stCrease);
-
-      // Three Wooden Stumps & Bails
-      var woodMat = new THREE.MeshPhongMaterial({ color: 0xD4A373, shininess: 30 });
-      var bailMat = new THREE.MeshPhongMaterial({ color: 0xE6CCB2, shininess: 20 });
+      // Three Wooden Stumps & Bails (Ash wood)
+      var woodMat = new THREE.MeshStandardMaterial({ color: 0xD4A373, roughness: 0.38, metalness: 0.02 });
+      var bailMat = new THREE.MeshStandardMaterial({ color: 0xE6CCB2, roughness: 0.42, metalness: 0.01 });
       var stumpSpacing = 0.11;
       for (var i = -1; i <= 1; i++) {
-        var sGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.72, 10);
+        var sGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.72, 12);
         var sMesh = new THREE.Mesh(sGeo, woodMat);
         sMesh.position.set(i * stumpSpacing, 0.36, -0.65);
         sMesh.castShadow = true;
@@ -695,23 +801,48 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     }
 
     function makeJerseyTex() {
-      return makeCanvasTex(256, 512, function(ctx, w, h) {
-        // Deep navy base
-        var g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, '#0D2B6B');
-        g.addColorStop(0.5, '#0A2255');
-        g.addColorStop(1, '#091840');
+      return makeCanvasTex(512, 512, function(ctx, w, h) {
+        // Deep midnight navy base
+        var g = ctx.createLinearGradient(0, 0, w, h);
+        g.addColorStop(0, '#0C1C38');
+        g.addColorStop(0.5, '#071329');
+        g.addColorStop(1, '#050D1C');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
-        // Subtle pinstripe
-        ctx.strokeStyle = 'rgba(56,189,248,0.18)';
-        ctx.lineWidth = 1.5;
-        for (var x = 0; x < w; x += 18) {
+
+        // Breathable mesh weave
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+        ctx.lineWidth = 1;
+        for (var x = 0; x < w; x += 10) {
           ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
         }
-        // Shoulder accent band
-        ctx.fillStyle = 'rgba(0,201,123,0.35)';
-        ctx.fillRect(0, 0, w, 28);
+        for (var y = 0; y < h; y += 10) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+
+        // Teal & Lime angled speed chevrons
+        ctx.fillStyle = '#00C97B';
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.15);
+        ctx.lineTo(w * 0.35, 0);
+        ctx.lineTo(w * 0.50, 0);
+        ctx.lineTo(0, h * 0.25);
+        ctx.closePath();
+        ctx.fill();
+
+        // Chest sponsor emblem: "VECTOR"
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('VECTOR', w / 2, h * 0.45);
+        ctx.fillStyle = '#00C97B';
+        ctx.font = '900 12px sans-serif';
+        ctx.fillText('SMARTBAT PRO', w / 2, h * 0.52);
+
+        // Player team number "07" on back
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.font = 'bold 78px sans-serif';
+        ctx.fillText('07', w / 2, h * 0.84);
       });
     }
 
@@ -727,62 +858,138 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     }
 
     function makePadTex() {
-      return makeCanvasTex(128, 256, function(ctx, w, h) {
-        ctx.fillStyle = '#EEF3F8';
+      return makeCanvasTex(256, 512, function(ctx, w, h) {
+        // Pure cricket white PU leather base
+        var bg = ctx.createLinearGradient(0, 0, w, 0);
+        bg.addColorStop(0, '#DDE3EA');
+        bg.addColorStop(0.2, '#F4F7FB');
+        bg.addColorStop(0.8, '#FFFFFF');
+        bg.addColorStop(1, '#D5DEE8');
+        ctx.fillStyle = bg;
         ctx.fillRect(0, 0, w, h);
-        // pad ridge lines
-        ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-        ctx.lineWidth = 2.5;
-        for (var y = 12; y < h; y += 22) {
-          ctx.beginPath(); ctx.moveTo(6, y); ctx.lineTo(w-6, y); ctx.stroke();
+
+        // 7 vertical cane ribs with subtle shading
+        var caneWidth = w / 8;
+        for (var i = 1; i <= 7; i++) {
+          var cx = i * caneWidth;
+          var caneGrad = ctx.createLinearGradient(cx - caneWidth/2, 0, cx + caneWidth/2, 0);
+          caneGrad.addColorStop(0, 'rgba(0,0,0,0.14)');
+          caneGrad.addColorStop(0.35, 'rgba(255,255,255,0.7)');
+          caneGrad.addColorStop(0.65, 'rgba(255,255,255,0.9)');
+          caneGrad.addColorStop(1, 'rgba(0,0,0,0.18)');
+          ctx.fillStyle = caneGrad;
+          ctx.fillRect(cx - caneWidth * 0.45, 0, caneWidth * 0.9, h);
         }
-        // slight gradient
-        var g = ctx.createLinearGradient(0, 0, w, 0);
-        g.addColorStop(0, 'rgba(200,210,220,0.25)');
-        g.addColorStop(0.5, 'rgba(255,255,255,0)');
-        g.addColorStop(1, 'rgba(200,210,220,0.25)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, w, h);
+
+        // Horizontal knee roll bolster section (mid-pad)
+        var rollY = h * 0.52;
+        ctx.fillStyle = 'rgba(0, 201, 123, 0.40)';
+        ctx.fillRect(10, rollY - 14, w - 20, 28);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, rollY - 14, w - 20, 28);
+
+        // VectorBat brand logo tag on knee roll
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('VECTOR', w / 2, rollY + 4);
       });
     }
 
     function makeWillowTex() {
-      return makeCanvasTex(128, 512, function(ctx, w, h) {
-        var g = ctx.createLinearGradient(0, 0, w, 0);
-        g.addColorStop(0,   '#C8A05A');
-        g.addColorStop(0.3, '#E2C07A');
-        g.addColorStop(0.7, '#D4AC60');
-        g.addColorStop(1,   '#B88C42');
-        ctx.fillStyle = g;
+      return makeCanvasTex(256, 1024, function(ctx, w, h) {
+        // Grade-1 English Willow base
+        var bg = ctx.createLinearGradient(0, 0, w, 0);
+        bg.addColorStop(0,   '#BA8B4D');
+        bg.addColorStop(0.15,'#CE9E5C');
+        bg.addColorStop(0.50,'#E5BE7E');
+        bg.addColorStop(0.85,'#CF9F5D');
+        bg.addColorStop(1,   '#B68646');
+        ctx.fillStyle = bg;
         ctx.fillRect(0, 0, w, h);
-        // Wood grain lines
-        ctx.strokeStyle = 'rgba(100,60,0,0.13)';
-        ctx.lineWidth = 1;
-        for (var y = 0; y < h; y += 8) {
+
+        // Authentic straight willow grain lines (9 grains)
+        for (var x = 20; x < w - 15; x += 24) {
+          ctx.strokeStyle = 'rgba(88, 52, 14, 0.24)';
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.moveTo(0, y + Math.sin(y*0.3)*2);
-          ctx.lineTo(w, y + Math.cos(y*0.25)*2);
+          ctx.moveTo(x + Math.sin(x) * 4, 0);
+          ctx.bezierCurveTo(
+            x + Math.sin(x * 0.5) * 6, h * 0.35,
+            x + Math.cos(x * 0.3) * 5, h * 0.70,
+            x + Math.sin(x) * 4, h
+          );
           ctx.stroke();
+        }
+
+        // Distinct sweet spot node marking (circular wood grain swirl)
+        var nodeY = h * 0.58;
+        ctx.strokeStyle = 'rgba(110, 68, 20, 0.18)';
+        ctx.lineWidth = 1;
+        for (var nr = 6; nr < 48; nr += 8) {
+          ctx.beginPath();
+          ctx.ellipse(w / 2, nodeY, nr * 0.7, nr, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Modern 3D laser bat sticker on front face
+        ctx.fillStyle = '#0B0F19';
+        ctx.fillRect(w * 0.15, h * 0.22, w * 0.70, h * 0.48);
+        ctx.strokeStyle = '#00C97B';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(w * 0.15, h * 0.22, w * 0.70, h * 0.48);
+
+        // VectorBat brand typography
+        ctx.fillStyle = '#00C97B';
+        ctx.font = '900 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.save();
+        ctx.translate(w / 2, h * 0.44);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('VECTOR BAT', 0, 0);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('ENGLISH WILLOW • PRO 100', 0, 20);
+        ctx.restore();
+      });
+    }
+
+    function makeGloveTex() {
+      return makeCanvasTex(256, 256, function(ctx, w, h) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, w, h);
+        // Protective finger segment blocks
+        ctx.fillStyle = '#00C97B';
+        ctx.fillRect(10, 10, w - 20, 36);
+        ctx.fillStyle = '#0A2540';
+        ctx.fillRect(10, 56, w - 20, 24);
+        // Carbon fiber shield texture
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        for (var x = 0; x < w; x += 8) {
+          for (var y = 90; y < h; y += 8) {
+            ctx.fillRect(x, y, 4, 4);
+          }
         }
       });
     }
 
     function makeHelmetTex() {
       return makeCanvasTex(256, 256, function(ctx, w, h) {
-        var g = ctx.createLinearGradient(0, 0, w, h);
-        g.addColorStop(0, '#1A2035');
-        g.addColorStop(0.4, '#0D1525');
-        g.addColorStop(1, '#060C18');
+        var g = ctx.createRadialGradient(w * 0.4, h * 0.35, 10, w / 2, h / 2, w / 2);
+        g.addColorStop(0, '#1E293B');
+        g.addColorStop(0.4, '#0F172A');
+        g.addColorStop(1, '#050811');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
-        // Specular highlight stripe
-        var s = ctx.createLinearGradient(0, 0, w, 0);
-        s.addColorStop(0, 'rgba(255,255,255,0)');
-        s.addColorStop(0.35, 'rgba(255,255,255,0.12)');
-        s.addColorStop(0.5, 'rgba(255,255,255,0.06)');
-        s.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = s;
-        ctx.fillRect(0, 0, w, h);
+
+        // Carbon weave pattern
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        for (var x = 0; x < w; x += 6) {
+          for (var y = 0; y < h; y += 6) {
+            if ((x + y) % 12 === 0) ctx.fillRect(x, y, 3, 3);
+          }
+        }
       });
     }
 
@@ -798,128 +1005,128 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       var padTex     = makePadTex();
       var willowTex  = makeWillowTex();
       var helmetTex  = makeHelmetTex();
+      var gloveTex   = makeGloveTex();
 
       var jerseyMat = new THREE.MeshStandardMaterial({ map: jerseyTex,  roughness: 0.75, metalness: 0.04 });
-      var kitMat    = new THREE.MeshStandardMaterial({ color: 0xF0F4F8, roughness: 0.85, metalness: 0.00 });
-      var padMat    = new THREE.MeshStandardMaterial({ map: padTex,     roughness: 0.50, metalness: 0.05 });
-      var gloveMat  = new THREE.MeshStandardMaterial({ color: 0x0A3A2A, roughness: 0.65, metalness: 0.08 });
-      var gloveWhiteMat = new THREE.MeshStandardMaterial({ color: 0xFAFAFA, roughness: 0.80, metalness: 0.02 });
+      var kitMat    = new THREE.MeshStandardMaterial({ color: 0xF2F5F8, roughness: 0.82, metalness: 0.00 });
+      var padMat    = new THREE.MeshStandardMaterial({ map: padTex,     roughness: 0.45, metalness: 0.05 });
+      var gloveMat  = new THREE.MeshStandardMaterial({ map: gloveTex,   roughness: 0.55, metalness: 0.08 });
       var skinMat   = new THREE.MeshStandardMaterial({ map: skinTex,    roughness: 0.88, metalness: 0.00 });
       var helmetMat = new THREE.MeshStandardMaterial({ map: helmetTex,  roughness: 0.28, metalness: 0.50 });
       var grillMat  = new THREE.MeshStandardMaterial({ color: 0x94A3B8, roughness: 0.25, metalness: 0.85 });
-      var shoeMat   = new THREE.MeshStandardMaterial({ color: 0xE2E8F0, roughness: 0.60, metalness: 0.12 });
+      var shoeMat   = new THREE.MeshStandardMaterial({ color: 0xFAFAFC, roughness: 0.50, metalness: 0.15 });
       var soleMat   = new THREE.MeshStandardMaterial({ color: 0x1E293B, roughness: 0.90, metalness: 0.00 });
 
       // ═══════════════════════════════════════════════════════
-      // REALISTIC 1.82M CRICKET BATSMAN - TEXTBOOK ATHLETIC STANCE
+      // TEXTBOOK SIDE-ON PRO CRICKETER (1.82m Athletic Build)
+      // Pitch along Z: Stumps at -0.65, Bowler at +Z
+      // Right-handed batsman stands side-on: chest facing +X,
+      // Left shoulder pointing down pitch (+Z), head turned to bowler.
       // ═══════════════════════════════════════════════════════
 
-      // ── FEET / CLEATED CRICKET SHOES ──
-      // Right foot (back foot, inside crease line, angled slightly towards point)
-      var rShoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.055, 0.23), shoeMat);
-      rShoe.position.set(-0.11, 0.028, -0.06);
-      rShoe.rotation.y = 0.22;
+      // ── FEET / CRICKET CLEATS ──
+      // Right foot (back foot, grounded across popping crease line near off stump)
+      var rShoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.06, 0.24), shoeMat);
+      rShoe.position.set(-0.02, 0.03, -0.05);
+      rShoe.rotation.y = Math.PI / 2 + 0.15; // Pointing sideways towards cover/point
+      rShoe.castShadow = true;
       batsmanGroup.add(rShoe);
-      var rSole = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.018, 0.225), soleMat);
-      rSole.position.set(-0.11, 0.009, -0.06);
-      rSole.rotation.y = 0.22;
+      var rSole = new THREE.Mesh(new THREE.BoxGeometry(0.096, 0.016, 0.235), soleMat);
+      rSole.position.set(-0.02, 0.008, -0.05);
+      rSole.rotation.y = Math.PI / 2 + 0.15;
       batsmanGroup.add(rSole);
 
-      // Left foot (front foot, slightly forward towards mid-off)
-      var lShoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.055, 0.23), shoeMat);
-      lShoe.position.set(0.12, 0.028, 0.10);
-      lShoe.rotation.y = -0.15;
+      // Left foot (front foot, planted forward towards mid-off/bowler)
+      var lShoe = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.06, 0.24), shoeMat);
+      lShoe.position.set(0.02, 0.03, 0.38);
+      lShoe.rotation.y = 0.25; // Angled 25° forward towards extra cover
+      lShoe.castShadow = true;
       batsmanGroup.add(lShoe);
-      var lSole = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.018, 0.225), soleMat);
-      lSole.position.set(0.12, 0.009, 0.10);
-      lSole.rotation.y = -0.15;
+      var lSole = new THREE.Mesh(new THREE.BoxGeometry(0.096, 0.016, 0.235), soleMat);
+      lSole.position.set(0.02, 0.008, 0.38);
+      lSole.rotation.y = 0.25;
       batsmanGroup.add(lSole);
 
-      // ── RIGHT LEG (back leg, flexed knee in athletic readiness) ──
-      var rShinGeo = new THREE.CylinderGeometry(0.058, 0.050, 0.40, 14);
+      // ── BACK LEG (Right leg: weight-bearing, flexed knee) ──
+      var rShinGeo = new THREE.CylinderGeometry(0.060, 0.052, 0.42, 14);
       var rShin = new THREE.Mesh(rShinGeo, padMat);
-      rShin.position.set(-0.11, 0.24, -0.04);
-      rShin.rotation.x = 0.08;
+      rShin.position.set(-0.02, 0.25, -0.05);
+      rShin.rotation.y = Math.PI / 2;
+      rShin.rotation.z = -0.06;
       rShin.castShadow = true;
       batsmanGroup.add(rShin);
 
-      // Pad vertical cane ridges (3 embossed lines on face)
-      for (var ri = -1; ri <= 1; ri++) {
-        var ribGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 8);
-        var rib = new THREE.Mesh(ribGeo, padMat);
-        rib.position.set(-0.11 + ri * 0.028, 0.24, 0.015);
-        rib.rotation.x = 0.08;
-        batsmanGroup.add(rib);
-      }
-
-      // Pad knee roll
-      var rKneeRoll = new THREE.Mesh(new THREE.SphereGeometry(0.060, 12, 10), padMat);
-      rKneeRoll.scale.set(1.0, 0.65, 0.85);
-      rKneeRoll.position.set(-0.11, 0.44, -0.025);
+      // Back Pad knee roll & wing
+      var rKneeRoll = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), padMat);
+      rKneeRoll.scale.set(1.1, 0.65, 0.85);
+      rKneeRoll.position.set(-0.02, 0.46, -0.05);
       batsmanGroup.add(rKneeRoll);
 
-      var rThighGeo = new THREE.CylinderGeometry(0.075, 0.065, 0.38, 14);
+      var rThighGeo = new THREE.CylinderGeometry(0.078, 0.066, 0.38, 14);
       var rThigh = new THREE.Mesh(rThighGeo, kitMat);
-      rThigh.position.set(-0.11, 0.63, -0.01);
-      rThigh.rotation.x = -0.12;
+      rThigh.position.set(-0.01, 0.65, -0.02);
+      rThigh.rotation.x = -0.10;
+      rThigh.rotation.z = -0.08;
       rThigh.castShadow = true;
       batsmanGroup.add(rThigh);
 
-      // ── LEFT LEG (front leg, bent knee leading towards bowler) ──
-      var lShinGeo = new THREE.CylinderGeometry(0.058, 0.050, 0.40, 14);
+      // ── FRONT LEG (Left leg: bent knee leading towards bowler) ──
+      var lShinGeo = new THREE.CylinderGeometry(0.060, 0.052, 0.42, 14);
       var lShin = new THREE.Mesh(lShinGeo, padMat);
-      lShin.position.set(0.12, 0.24, 0.08);
-      lShin.rotation.x = -0.14;
+      lShin.position.set(0.02, 0.25, 0.36);
+      lShin.rotation.x = -0.16;
+      lShin.rotation.y = 0.30;
       lShin.castShadow = true;
       batsmanGroup.add(lShin);
 
-      for (var li = -1; li <= 1; li++) {
-        var lRibGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 8);
-        var lRib = new THREE.Mesh(lRibGeo, padMat);
-        lRib.position.set(0.12 + li * 0.028, 0.24, 0.135);
-        lRib.rotation.x = -0.14;
-        batsmanGroup.add(lRib);
-      }
-
-      var lKneeRoll = new THREE.Mesh(new THREE.SphereGeometry(0.060, 12, 10), padMat);
-      lKneeRoll.scale.set(1.0, 0.65, 0.85);
-      lKneeRoll.position.set(0.12, 0.44, 0.06);
+      // Front Pad knee roll & protective outer wing
+      var lKneeRoll = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), padMat);
+      lKneeRoll.scale.set(1.1, 0.65, 0.85);
+      lKneeRoll.position.set(0.02, 0.46, 0.34);
       batsmanGroup.add(lKneeRoll);
 
-      var lThighGeo = new THREE.CylinderGeometry(0.075, 0.065, 0.38, 14);
+      var lWingGeo = new THREE.BoxGeometry(0.045, 0.35, 0.025);
+      var lWing = new THREE.Mesh(lWingGeo, padMat);
+      lWing.position.set(0.07, 0.28, 0.34);
+      batsmanGroup.add(lWing);
+
+      var lThighGeo = new THREE.CylinderGeometry(0.078, 0.066, 0.38, 14);
       var lThigh = new THREE.Mesh(lThighGeo, kitMat);
-      lThigh.position.set(0.12, 0.63, 0.04);
-      lThigh.rotation.x = -0.18;
+      lThigh.position.set(0.01, 0.65, 0.24);
+      lThigh.rotation.x = -0.25;
       lThigh.castShadow = true;
       batsmanGroup.add(lThigh);
 
-      // ── HIPS & WAIST ──
+      // ── HIPS & PELVIS (Side-on athletic stance) ──
       var hipGeo = new THREE.CylinderGeometry(0.145, 0.130, 0.16, 16);
       var hips = new THREE.Mesh(hipGeo, kitMat);
-      hips.position.set(0.005, 0.81, 0.02);
-      hips.rotation.x = -0.06;
+      hips.position.set(0.00, 0.82, 0.14);
+      hips.rotation.y = Math.PI / 2 - 0.20; // Aligned side-on
+      hips.rotation.x = -0.08;
       batsmanGroup.add(hips);
 
-      // ── TORSO (athletic cricket team jersey, tapered V build) ──
-      var torsoGeo = new THREE.CylinderGeometry(0.165, 0.140, 0.44, 18);
+      // ── TORSO & ATHLETIC CRICKET JERSEY ──
+      var torsoGeo = new THREE.CylinderGeometry(0.170, 0.145, 0.44, 18);
       var torso = new THREE.Mesh(torsoGeo, jerseyMat);
-      torso.position.set(0.005, 1.05, 0.03);
-      torso.rotation.x = -0.08; // athletic forward crouch
+      torso.position.set(0.00, 1.06, 0.14);
+      torso.rotation.y = Math.PI / 2 - 0.25; // Side-on chest
+      torso.rotation.z = -0.06; // Athletic crouch
       torso.castShadow = true;
       batsmanGroup.add(torso);
 
-      // Chest plate / upper torso
-      var chestGeo = new THREE.CylinderGeometry(0.175, 0.160, 0.16, 18);
+      // Upper chest & athletic shoulders
+      var chestGeo = new THREE.CylinderGeometry(0.180, 0.165, 0.16, 18);
       var chest = new THREE.Mesh(chestGeo, jerseyMat);
-      chest.position.set(0.005, 1.22, 0.03);
-      chest.rotation.x = -0.08;
+      chest.position.set(0.00, 1.24, 0.14);
+      chest.rotation.y = Math.PI / 2 - 0.25;
       chest.castShadow = true;
       batsmanGroup.add(chest);
 
-      // Shoulders bar
+      // Athletic Shoulder Yoke
       var shoulderGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.38, 14);
       var shoulderBar = new THREE.Mesh(shoulderGeo, jerseyMat);
-      shoulderBar.position.set(0.005, 1.30, 0.03);
+      shoulderBar.position.set(0.00, 1.32, 0.14);
+      shoulderBar.rotation.y = Math.PI / 2 - 0.25;
       shoulderBar.rotation.z = Math.PI / 2;
       shoulderBar.castShadow = true;
       batsmanGroup.add(shoulderBar);
@@ -927,28 +1134,33 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       // Neck
       var neckGeo = new THREE.CylinderGeometry(0.048, 0.058, 0.10, 14);
       var neck = new THREE.Mesh(neckGeo, skinMat);
-      neck.position.set(0.005, 1.37, 0.02);
+      neck.position.set(0.01, 1.38, 0.16);
       batsmanGroup.add(neck);
 
-      // ── CRICKET HELMET & HEAD (pro Masuri/Shrey style) ──
-      var headGeo = new THREE.SphereGeometry(0.125, 24, 20);
-      var head = new THREE.Mesh(headGeo, helmetMat);
-      head.position.set(0.005, 1.50, 0.015);
-      head.scale.set(1.0, 1.06, 1.02);
-      head.castShadow = true;
-      batsmanGroup.add(head);
+      // ── CRICKET HELMET & HEAD (Turned over left shoulder to bowler at +Z) ──
+      var headGroup = new THREE.Group();
+      headGroup.position.set(0.01, 1.50, 0.17);
+      headGroup.rotation.y = 0.10; // Eyes focused straight down the pitch at +Z
+      batsmanGroup.add(headGroup);
 
-      // Helmet visor peak
+      // Pro cricket helmet shell
+      var headGeo = new THREE.SphereGeometry(0.125, 24, 20);
+      var helmetMesh = new THREE.Mesh(headGeo, helmetMat);
+      helmetMesh.scale.set(1.0, 1.05, 1.02);
+      helmetMesh.castShadow = true;
+      headGroup.add(helmetMesh);
+
+      // Helmet peak / visor
       var peakGeo = new THREE.CylinderGeometry(0.130, 0.130, 0.022, 24, 1, false, -Math.PI * 0.55, Math.PI * 0.55);
       var peakMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, roughness: 0.35, metalness: 0.40 });
       var peak = new THREE.Mesh(peakGeo, peakMat);
-      peak.position.set(0.005, 1.45, 0.075);
-      peak.rotation.x = 0.22;
-      batsmanGroup.add(peak);
+      peak.position.set(0, -0.04, 0.065);
+      peak.rotation.x = 0.20;
+      headGroup.add(peak);
 
-      // Helmet face grille (titanium cage bars)
+      // Titanium face grille (double-bar Masuri pro style)
       var grillGroup = new THREE.Group();
-      grillGroup.position.set(0.005, 1.46, 0.095);
+      grillGroup.position.set(0, -0.04, 0.090);
       for (var gi = 0; gi < 5; gi++) {
         var vBarGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6);
         var vBar = new THREE.Mesh(vBarGeo, grillMat);
@@ -963,55 +1175,61 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         hBar.rotation.z = Math.PI / 2;
         grillGroup.add(hBar);
       }
-      batsmanGroup.add(grillGroup);
+      headGroup.add(grillGroup);
 
-      // Ear dome protector
-      var earDomeGeo = new THREE.SphereGeometry(0.045, 12, 10, 0, Math.PI);
-      var earDome = new THREE.Mesh(earDomeGeo, helmetMat);
-      earDome.position.set(-0.125, 1.50, 0.01);
-      earDome.rotation.y = -Math.PI / 2;
-      batsmanGroup.add(earDome);
+      // Rear neck protection: StemGuard
+      var stemGeo = new THREE.BoxGeometry(0.14, 0.07, 0.035);
+      var stemMat = new THREE.MeshStandardMaterial({ color: 0x1E293B, roughness: 0.4 });
+      var stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.set(0, -0.06, -0.11);
+      headGroup.add(stem);
 
-      // ── ARMS & HANDS (holding bat handle at waist/crease) ──
-      // Right arm (bottom hand)
-      var rUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
-      rUpperArm = new THREE.Mesh(rUpperArmGeo, jerseyMat);
-      rUpperArm.position.set(0.18, 1.22, 0.06);
-      rUpperArm.rotation.z = -0.68;
-      rUpperArm.rotation.x = 0.28;
-      rUpperArm.castShadow = true;
-      batsmanGroup.add(rUpperArm);
+      // Athlete face inside grille
+      var faceMesh = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 14), skinMat);
+      faceMesh.position.set(0, -0.02, 0.02);
+      faceMesh.scale.set(0.9, 1.05, 1.0);
+      headGroup.add(faceMesh);
 
-      var rForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.24, 12);
-      rForearm = new THREE.Mesh(rForearmGeo, skinMat);
-      rForearm.position.set(0.24, 1.05, 0.12);
-      rForearm.rotation.z = -1.05;
-      rForearm.rotation.x = 0.38;
-      rForearm.castShadow = true;
-      batsmanGroup.add(rForearm);
-
-      // Left arm (top hand)
+      // ── ARMS & SHOULDERS (Textbook high-elbow cricket stance) ──
+      // Left arm (Front arm: high cocked elbow pointing towards bowler)
       var lUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
       lUpperArm = new THREE.Mesh(lUpperArmGeo, jerseyMat);
-      lUpperArm.position.set(0.15, 1.25, 0.09);
-      lUpperArm.rotation.z = -0.52;
-      lUpperArm.rotation.x = 0.32;
+      lUpperArm.position.set(0.04, 1.28, 0.28);
+      lUpperArm.rotation.x = 0.65; // High elbow pointing towards bowler
+      lUpperArm.rotation.z = -0.45;
       lUpperArm.castShadow = true;
       batsmanGroup.add(lUpperArm);
 
-      var lForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.24, 12);
+      var lForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.25, 12);
       lForearm = new THREE.Mesh(lForearmGeo, skinMat);
-      lForearm.position.set(0.20, 1.10, 0.14);
-      lForearm.rotation.z = -0.92;
-      lForearm.rotation.x = 0.42;
+      lForearm.position.set(0.08, 1.12, 0.20);
+      lForearm.rotation.x = -0.85;
+      lForearm.rotation.z = -0.65;
       lForearm.castShadow = true;
       batsmanGroup.add(lForearm);
 
+      // Right arm (Rear arm: tucked in close to torso, guiding bottom of handle)
+      var rUpperArmGeo = new THREE.CylinderGeometry(0.042, 0.036, 0.26, 12);
+      rUpperArm = new THREE.Mesh(rUpperArmGeo, jerseyMat);
+      rUpperArm.position.set(-0.02, 1.25, 0.04);
+      rUpperArm.rotation.x = 0.25;
+      rUpperArm.rotation.z = -0.30;
+      rUpperArm.castShadow = true;
+      batsmanGroup.add(rUpperArm);
+
+      var rForearmGeo = new THREE.CylinderGeometry(0.035, 0.030, 0.25, 12);
+      rForearm = new THREE.Mesh(rForearmGeo, skinMat);
+      rForearm.position.set(0.06, 1.05, 0.10);
+      rForearm.rotation.x = -0.55;
+      rForearm.rotation.z = -0.75;
+      rForearm.castShadow = true;
+      batsmanGroup.add(rForearm);
+
       // ═══════════════════════════════════════════════════════
-      // BAT PIVOT positioned at hands grip height (0.10, 0.96, 0.15)
+      // BAT PIVOT positioned at hands grip height (0.12, 0.94, 0.14)
       // ═══════════════════════════════════════════════════════
       batPivot = new THREE.Group();
-      batPivot.position.set(0.10, 0.96, 0.15);
+      batPivot.position.set(0.12, 0.94, 0.14);
       scene.add(batPivot);
 
       batGroup = new THREE.Group();
@@ -1050,13 +1268,14 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         batGroup.add(chev);
       }
 
-      // Padded Batting Gloves gripping the handle
-      // Top Hand (Left)
+      // Pro Cricket Batting Gloves (Two-handed textbook 'V' grip)
+      // Top Hand (Left hand, firm grip at top of handle)
       var lGlove = new THREE.Mesh(new THREE.SphereGeometry(0.046, 14, 12), gloveMat);
       lGlove.position.set(0, 0.22, 0.008);
       lGlove.scale.set(1.15, 0.85, 1.0);
       batGroup.add(lGlove);
-      // Bottom Hand (Right)
+
+      // Bottom Hand (Right hand, relaxed control below left hand)
       var rGlove = new THREE.Mesh(new THREE.SphereGeometry(0.046, 14, 12), gloveMat);
       rGlove.position.set(0, 0.08, 0.008);
       rGlove.scale.set(1.15, 0.85, 1.0);
@@ -1481,7 +1700,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       // Natural crease stance baseline: bat blade points down to pitch, slight angle back to slips
       var rx = 0.15, ry = -0.15, rz = 0.0;
       var px = 0, py = 0, pz = 0, bodyYaw = 0;
-      var handsX = 0.10, handsY = 0.96, handsZ = 0.15;
+      var handsX = 0.12, handsY = 0.94, handsZ = 0.14;
       var phaseLabel = 'READY';
 
       if (shot.indexOf('cover') >= 0) {
@@ -1983,7 +2202,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           batsmanGroup.position.set(0, 0, 0.15);
         }
         if (displayMode === 'batsman') {
-          batPivot.position.set(0.10, 0.96, 0.15);
+          batPivot.position.set(0.12, 0.94, 0.14);
         }
         var baseQ = getBaseStanceQuat();
         currentStanceQuat.copy(baseQ);
@@ -2001,28 +2220,33 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
 
     function updateCameraPosition() {
       var isPortrait = window.innerWidth < window.innerHeight;
-      var distMultiplier = isPortrait ? 1.55 : 1.0;
+      var distMultiplier = isPortrait ? 1.55 : 1.25;
+
+      var lookHeight = 0.78;
+      lookTarget.set(0.02, lookHeight, 0.18);
 
       if (cameraAngle === 'side') {
-        orbit.theta = 0.06;
-        orbit.phi = 0.16;
-        orbit.radius = 2.40 * distMultiplier;
+        // TV Broadcast Replay angle from off-side (cover/point): full side-on silhouette & swing arc
+        orbit.theta = Math.PI / 2 - 0.15;
+        orbit.phi = 0.12;
+        orbit.radius = 2.85 * distMultiplier;
       } else if (cameraAngle === 'bowler') {
-        orbit.theta = Math.PI / 2 + 0.06;
-        orbit.phi = 0.18;
-        orbit.radius = 2.80 * distMultiplier;
-      } else if (cameraAngle === 'top') {
-        orbit.theta = 0.10;
-        orbit.phi = 1.15;
-        orbit.radius = 3.00 * distMultiplier;
-      } else if (cameraAngle === 'batsman') {
-        orbit.theta = -Math.PI / 2 + 0.22;
+        // Main Broadcast Camera from bowler's end looking down pitch towards batsman & stumps
+        orbit.theta = 0.04;
         orbit.phi = 0.14;
-        orbit.radius = 2.20 * distMultiplier;
+        orbit.radius = 3.60 * distMultiplier;
+      } else if (cameraAngle === 'top') {
+        // Overhead Tactical Bird's-Eye camera looking down on crease
+        orbit.theta = 0.10;
+        orbit.phi = 1.34;
+        orbit.radius = 3.20 * distMultiplier;
+        lookTarget.set(0.02, 0.10, 0.18);
+      } else if (cameraAngle === 'batsman') {
+        // Wicket-keeper / Umpire POV behind stumps looking down pitch to bowler
+        orbit.theta = Math.PI - 0.08;
+        orbit.phi = 0.16;
+        orbit.radius = 2.35 * distMultiplier;
       }
-
-      var lookHeight = 0.88;
-      lookTarget.set(0, lookHeight, 0.05);
 
       var cp = new THREE.Vector3(
         orbit.radius * Math.cos(orbit.phi) * Math.sin(orbit.theta),

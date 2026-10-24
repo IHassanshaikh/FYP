@@ -71,6 +71,49 @@
       "priority": 5,
       "passes": true,
       "notes": "Implemented 3D aerodynamic ribbon trail with vertex colors and radial shockwave sweet spot impact FX on bat face. Fixed camera framing for mobile portrait view and rescaled batsman to natural 1.0 proportions."
+    },
+    {
+      "id": "US-006",
+      "title": "Textbook Side-On Biomechanical Batsman Stance & Anatomical Proportions",
+      "description": "As a cricketer, I want the 3D batsman to adopt an authentic side-on batting stance with realistic anatomical details (protective glove finger rolls, 7-cane pads, pro helmet grille) so the posture accurately reflects professional cricket technique.",
+      "acceptanceCriteria": [
+        "Batsman adopts authentic side-on stance (chest facing off-side, front shoulder pointed down pitch, head turned over shoulder looking at bowler)",
+        "Batting gloves have segmented finger rolls and two-handed 'V' grip on bat handle",
+        "Pads feature 7 vertical cane ribs, knee roll wings, and top hat ankle wraps",
+        "Camera angles correspond accurately to cricket broadcast positions (side-on cover/point, bowler's end, keeper POV, overhead)",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Implemented textbook side-on athletic cricket stance, pro batting gloves with segmented finger rolls, 7-cane bolster pads with knee wings, StemGuard helmet with titanium grille, and broadcast camera positions."
+    },
+    {
+      "id": "US-007",
+      "title": "Realistic Stadium Pitch, Radial Mown Grass Outfield & Atmospheric Stadium Lighting",
+      "description": "As a user, I want the visualizer stage to resemble a real cricket stadium under floodlights with realistic turf, crease wear, chalk lines, and lighting ambience.",
+      "acceptanceCriteria": [
+        "Outfield rendered with realistic alternating lawn mowing stripes and turf texture",
+        "Pitch features popping crease, return crease, bowling crease, and worn batting scuff patches",
+        "Atmospheric lighting with realistic floodlight glare, soft contact shadows, and tone mapping",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Created procedural clay-straw pitch texture with batsman footmark scuffs, radial mown grass outfield with grass flecks, 4 floodlight towers with halo flares, and boundary ring."
+    },
+    {
+      "id": "US-008",
+      "title": "Kinematic Stroke Animations & Full-Body Weight Transfer",
+      "description": "As a cricketer, I want realistic stroke animations where the batsman strides into drives, pulls with rotational hip drive, and plays authentic forward defensive strokes.",
+      "acceptanceCriteria": [
+        "Stroke animations include coordinated leg stride, torso rotation, and elbow lead",
+        "Hands and bat stay connected throughout the swing stroke trajectory",
+        "Bat speed and trajectory ribbon accurately represent stroke mechanics",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Aligned swing stroke kinematics to textbook cricket mechanics with dynamic hands, arms, body lean, and color-coded aerodynamic trajectory trails."
     }
   ]
 }
