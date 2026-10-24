@@ -43,3 +43,13 @@ Started: Sat Oct 24 2026
 - Smooth dynamic linkage between hands, bat handle, forearms, and body lean across all 8 stroke types.
 - Verification: `npx tsc --noEmit` exited with code 0. Verified visually via browser.
 ---
+
+## 2026-10-24 - Fix Bat Swing Direction (Forward Drive Down Pitch Towards Bowler)
+- Diagnosed root cause of bat swinging backwards towards wickets: bat blade geometry extends along negative Y axis (-Y). In right-hand rotation around X, a point at (0, -y, 0) maps to z = -y*sin(rx). Positive rx moves the blade backward into negative Z (wickets at z = -0.65), while negative rx moves the blade forward into positive Z (bowler at +Z).
+- Corrected all 8 pro stroke kinematic sequences (Cover Drive, On Drive, Straight Drive, Pull Shot, Square Cut, Forward Defence, Sweep Shot, Helicopter Shot):
+  - Backlift: rx rises from +0.05 to +0.65..+0.85 (blade lifts up and back towards keeper/slips at -Z).
+  - Downswing & Impact: rx accelerates forward from +0.75 through 0 to -0.60..-0.75 (blade drives forward down pitch towards incoming bowler at +Z).
+  - Follow-through: rx arcs up and overhead to -1.65..-2.25 pointing down ground towards boundary.
+- Realigned hardware sensor pitch inversion in `setLiveOrientation` so physical forward pitch tilts the bat forward towards the bowler.
+- Verification: `npx tsc --noEmit` passed with 0 errors. Committed as `c5cdb0d`.
+---
