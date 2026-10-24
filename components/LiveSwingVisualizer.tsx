@@ -26,7 +26,7 @@ export interface LiveSwingVisualizerRef {
     liveAccelG?: number
   ) => void;
   setSoundEnabled: (enabled: boolean) => void;
-  setDisplayMode?: (mode: 'virat' | 'batsman' | 'free_bat') => void;
+  setDisplayMode?: (mode: 'batsman' | 'free_bat') => void;
   calibrateStance: () => void;
   setMountingConfig?: (config: {
     mountingMode?: 'spine_up' | 'spine_down' | 'horizontal';
@@ -237,7 +237,6 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
   <div id="overlay-hud">
@@ -370,14 +369,6 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       timing: 92
     };
 
-    // --- 3D Virat Kohli Rigged GLB Model & Skeletal Animations ---
-    var viratModel = null;
-    var viratMixer = null;
-    var viratActions = [];
-    var viratBatMesh = null;
-    var viratLoaded = false;
-    var viratSwingDuration = 2.4; // Authentic international stroke playback duration
-
     // --- STANCE CALIBRATION & QUATERNIONS ---
     // Batsman Crease Stance: bat hangs naturally down to turf, toe near crease, slight back angle towards slips
     var baseStanceEulerBatsman = new THREE.Euler(0.05, 0.05, 0.0, 'YXZ');
@@ -388,7 +379,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     var baseStanceQuatFreeBat = new THREE.Quaternion().setFromEuler(baseStanceEulerFreeBat);
 
     function getBaseStanceQuat() {
-      return displayMode === 'free_bat' ? baseStanceQuatFreeBat : baseStanceQuatBatsman;
+      return displayMode === 'batsman' ? baseStanceQuatBatsman : baseStanceQuatFreeBat;
     }
 
     var targetStanceQuat = new THREE.Quaternion().copy(baseStanceQuatBatsman);
@@ -415,7 +406,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     var impactValEl = document.getElementById('impact-val');
 
     var hasLiveHardware = false;
-    var displayMode = 'virat'; // 'virat', 'batsman', or 'free_bat'
+    var displayMode = 'batsman'; // 'batsman' or 'free_bat'
     var lastTipPos = new THREE.Vector3();
     var lastImpactFxTime = 0;
     var liveBatSpeedKmh = 0; // Real-time speed from sensor
@@ -476,33 +467,30 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       }
     }
 
-    function applyDisplayMode() {
+    function toggleViewMode() {
+      displayMode = displayMode === 'batsman' ? 'free_bat' : 'batsman';
       var textEl = document.getElementById('view-mode-text');
-      var pillEl = document.getElementById('view-mode-pill');
-      if (displayMode === 'virat') {
+      if (displayMode === 'free_bat') {
         if (textEl) {
-          textEl.textContent = '👑 VIRAT KOHLI 3D';
-          textEl.style.color = '#F59E0B';
+          textEl.textContent = '🪄 FREE 3D BAT (360°)';
+          textEl.style.color = '#00C97B';
         }
-        if (pillEl) {
-          pillEl.style.borderColor = 'rgba(245, 158, 11, 0.6)';
-        }
-        if (viratModel) viratModel.visible = true;
         if (batsmanGroup) batsmanGroup.visible = false;
-        if (batPivot) batPivot.visible = false;
-        lookTarget.set(0.02, 0.88, 0.20);
-      } else if (displayMode === 'batsman') {
+        if (batPivot) {
+          batPivot.position.set(0, 0.85, 0);
+          batPivot.scale.set(1.25, 1.25, 1.25);
+        }
+        if (batGroup) {
+          batGroup.position.set(0, 0.45, 0); // Center bat around pivot for 360 inspection
+        }
+        lookTarget.set(0, 0.85, 0);
+      } else {
         if (textEl) {
           textEl.textContent = '🏏 BATSMAN STANCE';
           textEl.style.color = '#38BDF8';
         }
-        if (pillEl) {
-          pillEl.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-        }
-        if (viratModel) viratModel.visible = false;
         if (batsmanGroup) batsmanGroup.visible = true;
         if (batPivot) {
-          batPivot.visible = true;
           batPivot.position.set(0.12, 0.94, 0.14);
           batPivot.scale.set(1.0, 1.0, 1.0);
         }
@@ -510,113 +498,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           batGroup.position.set(0, 0, 0);
         }
         lookTarget.set(0.02, 0.88, 0.18);
-      } else { // 'free_bat'
-        if (textEl) {
-          textEl.textContent = '🪄 FREE 3D BAT (360°)';
-          textEl.style.color = '#00C97B';
-        }
-        if (pillEl) {
-          pillEl.style.borderColor = 'rgba(0, 201, 123, 0.5)';
-        }
-        if (viratModel) viratModel.visible = false;
-        if (batsmanGroup) batsmanGroup.visible = false;
-        if (batPivot) {
-          batPivot.visible = true;
-          batPivot.position.set(0, 0.85, 0);
-          batPivot.scale.set(1.25, 1.25, 1.25);
-        }
-        if (batGroup) {
-          batGroup.position.set(0, 0.45, 0);
-        }
-        lookTarget.set(0, 0.85, 0);
       }
-
+      // Re-align to appropriate base stance
       var baseQ = getBaseStanceQuat();
       targetStanceQuat.copy(baseQ);
       currentStanceQuat.copy(baseQ);
       if (batPivot) batPivot.quaternion.copy(baseQ);
       updateCameraPosition();
-    }
-
-    function toggleViewMode() {
-      if (displayMode === 'virat') {
-        displayMode = 'batsman';
-      } else if (displayMode === 'batsman') {
-        displayMode = 'free_bat';
-      } else {
-        displayMode = (viratLoaded && viratModel) ? 'virat' : 'batsman';
-      }
-      applyDisplayMode();
-    }
-
-    function loadViratKohliModel() {
-      if (typeof THREE.GLTFLoader !== 'function') {
-        console.warn('[3D] GLTFLoader not available, running procedural batsman fallback');
-        displayMode = 'batsman';
-        applyDisplayMode();
-        return;
-      }
-
-      var loader = new THREE.GLTFLoader();
-      loader.load('/models/virat_kohli.glb', function(gltf) {
-        viratModel = gltf.scene;
-        viratModel.name = 'ViratKohliModel';
-
-        viratModel.traverse(function(child) {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            if (child.material) {
-              child.material.roughness = 0.60;
-              child.material.metalness = 0.10;
-              if (child.material.map) child.material.map.encoding = THREE.sRGBEncoding;
-            }
-            if (child.name && child.name.toLowerCase().indexOf('bat') >= 0) {
-              viratBatMesh = child;
-            }
-          }
-        });
-
-        // Compute size to normalize height to 1.82m
-        var bbox = new THREE.Box3().setFromObject(viratModel);
-        var size = new THREE.Vector3();
-        bbox.getSize(size);
-        var height = size.y;
-        var scale = (height > 0.1) ? (1.82 / height) : 0.94;
-        viratModel.scale.set(scale, scale, scale);
-
-        // Position on pitch popping crease (feet ground level at y=0.005)
-        viratModel.position.set(0.06, 0.005, 0.20);
-        // Align batsman stance side-on along pitch facing bowler (+Z)
-        viratModel.rotation.y = -Math.PI / 2;
-
-        scene.add(viratModel);
-
-        if (gltf.animations && gltf.animations.length > 0) {
-          viratMixer = new THREE.AnimationMixer(viratModel);
-          for (var i = 0; i < gltf.animations.length; i++) {
-            var clip = gltf.animations[i];
-            var action = viratMixer.clipAction(clip);
-            action.setLoop(THREE.LoopOnce);
-            action.clampWhenFinished = true;
-            viratActions.push(action);
-          }
-          // Prime stance pose at frame 0
-          viratMixer.update(0.001);
-          viratActions.forEach(function(act) {
-            act.play();
-            act.paused = true;
-          });
-        }
-
-        viratLoaded = true;
-        displayMode = 'virat';
-        applyDisplayMode();
-      }, undefined, function(err) {
-        console.warn('[3D] Failed to load Virat Kohli GLB:', err);
-        displayMode = 'batsman';
-        applyDisplayMode();
-      });
     }
 
     function init() {
@@ -645,7 +533,6 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       buildStadium();
       buildPitchAndStumps();
       buildBatsmanAndBat();
-      loadViratKohliModel();
       setupTrail();
       setupImpactFX();
       setupEventListeners();
@@ -1975,23 +1862,8 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         trailCoreLine.material.color.setHex(ribbonColor);
       }
       
-      if (displayMode === 'virat' && viratMixer && viratActions.length > 0) {
-        swingDuration = 2.4; // Authentic stroke duration for full skeletal playback
-        var clipLen = 6.9167;
-        var tScale = clipLen / swingDuration;
-        viratActions.forEach(function(act) {
-          act.reset();
-          act.timeScale = tScale;
-          act.paused = false;
-          act.play();
-        });
-        phaseIndicator.textContent = '👑 VIRAT KOHLI • ' + (currentShotParams.shotType || 'CLASSIC COVER DRIVE').toUpperCase();
-        phaseIndicator.style.borderColor = '#F59E0B';
-        phaseIndicator.style.color = '#F59E0B';
-      } else {
-        // Set 1.25s cinematic duration for procedural biomechanical stroke
-        swingDuration = 1.25;
-      }
+      // Set 1.25s cinematic duration for fully visible biomechanical stroke
+      swingDuration = 1.25;
     }
 
     function executeSwingAnimation(dt) {
@@ -2516,78 +2388,18 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
       }
     }
 
-    function executeViratSwingAnimation(dt) {
-      swingTime += dt;
-      var progress = Math.min(1.0, swingTime / swingDuration);
-
-      if (viratMixer) {
-        viratMixer.update(dt);
-      }
-
-      // Sample sweet spot on Virat's bat for trail
-      if (viratBatMesh) {
-        var sweetWorld = new THREE.Vector3(0, 1.5, 0);
-        viratBatMesh.localToWorld(sweetWorld);
-        addTrailPoint(sweetWorld);
-
-        // Impact moment: contact with cricket ball in the downswing (~44% of stroke)
-        if (progress >= 0.44 && (swingTime - dt) < 0.44 * swingDuration) {
-          triggerImpactFX(sweetWorld);
-          var spd = Math.round(currentShotParams.batSpeed || currentShotParams.speed || 134);
-          impactValEl.textContent = spd > 0 ? spd + ' km/h' : (currentShotParams.impactG || 86) + 'g';
-          impactBanner.className = 'active';
-          setTimeout(function() {
-            impactBanner.className = '';
-          }, 900);
-          playImpactSound(currentShotParams.impactG || 25);
-          phaseIndicator.textContent = '⚡ SWEET SPOT CRACK! • ' + spd + ' KM/H';
-          phaseIndicator.style.borderColor = '#FFD700';
-          phaseIndicator.style.color = '#FFD700';
-        }
-      }
-
-      if (progress >= 1.0) {
-        isSwinging = false;
-        viratActions.forEach(function(act) {
-          act.paused = true;
-        });
-        phaseIndicator.textContent = '👑 VIRAT KOHLI • READY IN STANCE';
-        phaseIndicator.style.borderColor = '#00C97B';
-        phaseIndicator.style.color = '#00C97B';
-        postParentMessage({
-          type: 'swingComplete',
-          data: currentShotParams
-        });
-
-        // Smoothly return to ready stance pose after 1.2s follow-through pause
-        setTimeout(function() {
-          if (!isSwinging && viratMixer && displayMode === 'virat') {
-            viratActions.forEach(function(act) {
-              act.reset();
-              act.timeScale = 1;
-              act.paused = true;
-              act.play();
-            });
-            viratMixer.update(0.001);
-          }
-        }, 1200);
-      }
-    }
-
     function updateCameraPosition() {
       var isPortrait = window.innerWidth < window.innerHeight;
       var distMultiplier = isPortrait ? 1.55 : 1.25;
-      var aspect = window.innerWidth / Math.max(window.innerHeight, 1);
-      if (aspect > 2.0) distMultiplier *= 1.18; // Full head-to-toe headroom on ultra-wide containers
 
-      var lookHeight = 0.88;
+      var lookHeight = 0.78;
       lookTarget.set(0.02, lookHeight, 0.18);
 
       if (cameraAngle === 'side') {
         // TV Broadcast Replay angle from off-side (cover/point): full side-on silhouette & swing arc
         orbit.theta = Math.PI / 2 - 0.15;
-        orbit.phi = 0.10;
-        orbit.radius = 3.20 * distMultiplier;
+        orbit.phi = 0.12;
+        orbit.radius = 2.85 * distMultiplier;
       } else if (cameraAngle === 'bowler') {
         // Main Broadcast Camera from bowler's end looking down pitch towards batsman & stumps
         orbit.theta = 0.04;
@@ -2689,14 +2501,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
     var physicsAccumulator = 0;
 
     function physicsStep(dt) {
-      if (displayMode === 'virat' && viratModel && viratModel.visible) {
-        if (isSwinging) {
-          executeViratSwingAnimation(dt);
-        } else {
-          var t = clock.getElapsedTime();
-          viratModel.position.y = 0.005 + Math.sin(t * 2.0) * 0.002;
-        }
-      } else if (isSwinging) {
+      if (isSwinging) {
         // Built-in swing stroke / demo animation playing
         executeSwingAnimation(dt);
       } else if (hasLiveHardware) {
@@ -2735,8 +2540,8 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         updateBatsmanArmIK();
       }
 
-      // Real-time sweet spot velocity tracking & dynamic trajectory ribbon trail for procedural bat
-      if (displayMode !== 'virat' && bladeMesh && batGroup) {
+      // Real-time sweet spot velocity tracking & dynamic trajectory ribbon trail
+      if (bladeMesh && batGroup) {
         var sweetWorld = new THREE.Vector3(0, -0.36, 0.028);
         batGroup.localToWorld(sweetWorld);
         if (lastTipPos.lengthSq() > 0) {
@@ -2790,10 +2595,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           cameraAngle = msg.view || 'side';
           updateCameraPosition();
         } else if (msg.type === 'setDisplayMode') {
-          if (msg.mode && msg.mode !== displayMode) {
-            displayMode = msg.mode;
-            applyDisplayMode();
-          }
+          if (msg.mode && msg.mode !== displayMode) toggleViewMode();
         } else if (msg.type === 'calibrateStance') {
           calibrateStance();
         } else if (msg.type === 'setMountingConfig') {
