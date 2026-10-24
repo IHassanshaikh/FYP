@@ -370,7 +370,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
 
     // --- STANCE CALIBRATION & QUATERNIONS ---
     // Batsman Crease Stance: bat hangs naturally down to turf, toe near crease, slight back angle towards slips
-    var baseStanceEulerBatsman = new THREE.Euler(0.18, -0.15, -0.05, 'YXZ');
+    var baseStanceEulerBatsman = new THREE.Euler(0.05, 0.05, 0.0, 'YXZ');
     var baseStanceQuatBatsman = new THREE.Quaternion().setFromEuler(baseStanceEulerBatsman);
 
     // Free 3D Bat Stance: centered upright hanging down with subtle tilt towards camera
@@ -1698,7 +1698,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
 
       var shot = (currentShotParams.shotType || '').toLowerCase();
       // Natural crease stance baseline: bat blade points down to pitch, slight angle back to slips
-      var rx = 0.15, ry = -0.15, rz = 0.0;
+      var rx = 0.05, ry = 0.05, rz = 0.0;
       var px = 0, py = 0, pz = 0, bodyYaw = 0;
       var handsX = 0.12, handsY = 0.94, handsZ = 0.14;
       var phaseLabel = 'READY';
@@ -1708,28 +1708,28 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.28) {
           var t = progress / 0.28;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.75 - 0.15);
-          ry = -0.15 + ease * (0.35 - (-0.15));
-          rz = 0.0 + ease * 0.20;
-          pz = ease * 0.16;
-          handsZ = 0.18 + ease * 0.10;
+          rx = 0.05 + ease * 0.70; // Backlift: blade lifts backward towards slips/gully
+          ry = 0.05 - ease * 0.30;
+          rz = -ease * 0.15;
+          pz = ease * 0.14; // Front foot steps forward towards bowler
+          handsZ = 0.14 + ease * 0.06;
           phaseLabel = 'HIGH BACKLIFT (GULLY)';
           phaseIndicator.style.borderColor = '#FFD700';
           phaseIndicator.style.color = '#FFD700';
         } else if (progress < 0.58) {
           var t = (progress - 0.28) / 0.30;
           var ease = t * t;
-          rx = -0.75 + ease * (0.55 - (-0.75));
-          ry = 0.35 - ease * 0.10;
-          rz = 0.20 - ease * 0.35;
-          pz = 0.16 + ease * 0.06;
+          rx = 0.75 - ease * 1.35; // Downswing: blade accelerates FORWARD (+Z) to -0.60
+          ry = -0.25 + ease * 0.60; // Face opens towards extra cover (+X)
+          rz = -0.15 + ease * 0.40;
+          pz = 0.14 + ease * 0.08;
           handsX = 0.12 + ease * 0.08;
-          handsZ = 0.28 + ease * 0.16;
+          handsZ = 0.20 + ease * 0.24;
           phaseLabel = 'COVER DOWNSWING';
           phaseIndicator.style.borderColor = '#FFD700';
           phaseIndicator.style.color = '#FFD700';
         } else if (progress < 0.68) {
-          rx = 0.55; ry = 0.25; rz = -0.15;
+          rx = -0.60; ry = 0.35; rz = 0.25;
           pz = 0.22; handsX = 0.20; handsZ = 0.44;
           phaseLabel = '⚡ SWEET SPOT CRACK!';
           phaseIndicator.style.borderColor = '#FFD700';
@@ -1740,11 +1740,11 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
           var ease = t * (2 - t);
-          rx = 0.55 + ease * 1.25;
-          ry = 0.25 + ease * 0.15;
-          rz = -0.15 - ease * 0.30;
+          rx = -0.60 - ease * 1.25; // Follow-through: blade arcs UP and FORWARD into cover boundary
+          ry = 0.35 + ease * 0.15;
+          rz = 0.25 + ease * 0.10;
           pz = 0.22 - ease * 0.04;
-          handsY = 1.10 + ease * 0.18;
+          handsY = 0.94 + ease * 0.28;
           handsZ = 0.44 - ease * 0.06;
           phaseLabel = 'HIGH ELBOW FINISH';
           phaseIndicator.style.borderColor = '#FFD700';
@@ -1752,13 +1752,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 1.80 + ease * (0.15 - 1.80);
-          ry = 0.40 + ease * (-0.15 - 0.40);
-          rz = -0.45 + ease * (0.0 - (-0.45));
+          rx = -1.85 + ease * (0.05 - (-1.85));
+          ry = 0.50 + ease * (0.05 - 0.50);
+          rz = 0.35 * (1 - ease);
           pz = 0.18 * (1 - ease);
           handsX = 0.12 + 0.08 * (1 - ease);
-          handsY = 1.10 + 0.18 * (1 - ease);
-          handsZ = 0.18 + 0.20 * (1 - ease);
+          handsY = 0.94 + 0.28 * (1 - ease);
+          handsZ = 0.14 + 0.24 * (1 - ease);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else if (shot.indexOf('on') >= 0 && shot.indexOf('drive') >= 0) {
@@ -1766,29 +1766,29 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.28) {
           var t = progress / 0.28;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.65 - 0.15);
-          ry = -0.15 + ease * 0.15;
-          rz = 0.05 * ease;
+          rx = 0.05 + ease * 0.65;
+          ry = 0.05 - ease * 0.05;
+          rz = 0.0;
           pz = ease * 0.14;
-          handsZ = 0.18 + ease * 0.10;
+          handsZ = 0.14 + ease * 0.06;
           phaseLabel = 'STRAIGHT LIFT';
           phaseIndicator.style.borderColor = '#38BDF8';
           phaseIndicator.style.color = '#38BDF8';
         } else if (progress < 0.58) {
           var t = (progress - 0.28) / 0.30;
           var ease = t * t;
-          rx = -0.65 + ease * (0.60 - (-0.65));
-          ry = 0.0 - ease * 0.32;
-          rz = 0.05 - ease * 0.15;
-          pz = 0.14 + ease * 0.04;
-          handsX = 0.12 - ease * 0.08;
-          handsZ = 0.28 + ease * 0.14;
+          rx = 0.70 - ease * 1.30; // Drives forward to -0.60
+          ry = 0.0 - ease * 0.32;  // Directs face towards mid-on (-X)
+          rz = -ease * 0.15;
+          pz = 0.14 + ease * 0.06;
+          handsX = 0.12 - ease * 0.06;
+          handsZ = 0.20 + ease * 0.22;
           phaseLabel = 'MID-ON DOWNSWING';
           phaseIndicator.style.borderColor = '#38BDF8';
           phaseIndicator.style.color = '#38BDF8';
         } else if (progress < 0.68) {
-          rx = 0.60; ry = -0.32; rz = -0.10;
-          pz = 0.18; handsX = 0.04; handsZ = 0.42;
+          rx = -0.60; ry = -0.32; rz = -0.15;
+          pz = 0.20; handsX = 0.06; handsZ = 0.42;
           phaseLabel = '⚡ MID-ON TIMING!';
           phaseIndicator.style.borderColor = '#38BDF8';
           phaseIndicator.style.color = '#38BDF8';
@@ -1798,24 +1798,24 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
           var ease = t * (2 - t);
-          rx = 0.60 + ease * 0.95;
+          rx = -0.60 - ease * 1.05; // Follow-through: blade extends towards bowler/mid-on
           ry = -0.32 - ease * 0.05;
-          rz = -0.10 - ease * 0.15;
-          pz = 0.18 - ease * 0.04;
-          handsY = 1.10 + ease * 0.12;
+          rz = -0.15 - ease * 0.10;
+          pz = 0.20 - ease * 0.04;
+          handsY = 0.94 + ease * 0.22;
           phaseLabel = 'CHECK FOLLOW-THROUGH';
           phaseIndicator.style.borderColor = '#38BDF8';
           phaseIndicator.style.color = '#38BDF8';
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 1.55 + ease * (0.15 - 1.55);
-          ry = -0.37 + ease * (-0.15 - (-0.37));
-          rz = -0.25 + ease * (0.0 - (-0.25));
-          pz = 0.14 * (1 - ease);
-          handsX = 0.12 - 0.08 * (1 - ease);
-          handsY = 1.10 + 0.12 * (1 - ease);
-          handsZ = 0.18 + 0.14 * (1 - ease);
+          rx = -1.65 + ease * (0.05 - (-1.65));
+          ry = -0.37 + ease * (0.05 - (-0.37));
+          rz = -0.25 * (1 - ease);
+          pz = 0.16 * (1 - ease);
+          handsX = 0.12 - 0.06 * (1 - ease);
+          handsY = 0.94 + 0.22 * (1 - ease);
+          handsZ = 0.14 + 0.22 * (1 - ease);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else if (shot.indexOf('straight') >= 0) {
@@ -1823,26 +1823,26 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.28) {
           var t = progress / 0.28;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.70 - 0.15);
-          ry = -0.15 + ease * 0.15;
+          rx = 0.05 + ease * 0.70; // High vertical backlift
+          ry = 0.05 * (1 - ease);
           rz = 0.0;
           pz = ease * 0.16;
-          handsZ = 0.18 + ease * 0.10;
+          handsZ = 0.14 + ease * 0.06;
           phaseLabel = 'PURE VERTICAL LIFT';
           phaseIndicator.style.borderColor = '#00C97B';
           phaseIndicator.style.color = '#00C97B';
         } else if (progress < 0.58) {
           var t = (progress - 0.28) / 0.30;
           var ease = t * t;
-          rx = -0.70 + ease * (0.65 - (-0.70));
+          rx = 0.75 - ease * 1.40; // Accelerates straight down to -0.65 (towards bowler)
           ry = 0.0; rz = 0.0;
           pz = 0.16 + ease * 0.06;
-          handsZ = 0.28 + ease * 0.16;
+          handsZ = 0.20 + ease * 0.24;
           phaseLabel = 'DOWN THE V';
           phaseIndicator.style.borderColor = '#00C97B';
           phaseIndicator.style.color = '#00C97B';
         } else if (progress < 0.68) {
-          rx = 0.65; ry = 0.0; rz = 0.0;
+          rx = -0.65; ry = 0.0; rz = 0.0;
           pz = 0.22; handsZ = 0.44;
           phaseLabel = '⚡ MIDDLE OF THE WILLOW!';
           phaseIndicator.style.borderColor = '#00C97B';
@@ -1853,22 +1853,22 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
           var ease = t * (2 - t);
-          rx = 0.65 + ease * 1.25;
+          rx = -0.65 - ease * 1.25; // Iconic high vertical finish pointing straight down pitch
           ry = 0.0; rz = 0.0;
           pz = 0.22 - ease * 0.04;
-          handsY = 1.10 + ease * 0.16;
+          handsY = 0.94 + ease * 0.26;
           phaseLabel = 'ICONIC VERTICAL FINISH';
           phaseIndicator.style.borderColor = '#00C97B';
           phaseIndicator.style.color = '#00C97B';
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 1.90 + ease * (0.15 - 1.90);
-          ry = -0.15 * ease;
+          rx = -1.90 + ease * (0.05 - (-1.90));
+          ry = 0.05 * ease;
           rz = 0.0;
           pz = 0.18 * (1 - ease);
-          handsY = 1.10 + 0.16 * (1 - ease);
-          handsZ = 0.18 + 0.18 * (1 - ease);
+          handsY = 0.94 + 0.26 * (1 - ease);
+          handsZ = 0.14 + 0.24 * (1 - ease);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else if (shot.indexOf('pull') >= 0) {
@@ -1876,13 +1876,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.28) {
           var t = progress / 0.28;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.85 - 0.15);
-          ry = -0.15 + ease * 0.65;
-          rz = ease * 0.85;
-          pz = -ease * 0.12;
+          rx = 0.05 + ease * 0.80; // High backlift behind rear shoulder
+          ry = 0.05 - ease * 0.65;
+          rz = -ease * 0.85;
+          pz = -ease * 0.12; // Weight shifts back onto rear foot
           px = -ease * 0.06;
-          handsZ = 0.18 - ease * 0.08;
-          handsY = 1.10 + ease * 0.12;
+          handsZ = 0.14 - ease * 0.06;
+          handsY = 0.94 + ease * 0.22;
           phaseLabel = 'ROCK BACK ONTO BACK FOOT';
           phaseIndicator.style.borderColor = '#EF4444';
           phaseIndicator.style.color = '#EF4444';
@@ -1890,20 +1890,20 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           var t = (progress - 0.28) / 0.30;
           var ease = t * t;
           bodyYaw = ease * 0.85;
-          rx = -0.85 + ease * (0.25 - (-0.85));
-          ry = 0.50 - ease * 1.95;
-          rz = 0.85 - ease * 2.25;
+          rx = 0.85 - ease * 1.05; // Whipping forward horizontally
+          ry = -0.60 - ease * 1.35;
+          rz = -0.85 + ease * 2.25;
           pz = -0.12 + ease * 0.04;
           handsX = 0.12 - ease * 0.22;
-          handsZ = 0.10 + ease * 0.16;
+          handsZ = 0.08 + ease * 0.22;
           phaseLabel = 'HORIZONTAL CROSS-BAT SWIPE';
           phaseIndicator.style.borderColor = '#EF4444';
           phaseIndicator.style.color = '#EF4444';
         } else if (progress < 0.68) {
-          rx = 0.25; ry = -1.45; rz = -1.40;
+          rx = -0.20; ry = -1.95; rz = 1.40;
           bodyYaw = 0.85;
           pz = -0.08; px = -0.06;
-          handsX = -0.10; handsZ = 0.26;
+          handsX = -0.10; handsZ = 0.30;
           phaseLabel = '⚡ POWER PULL IMPACT!';
           phaseIndicator.style.borderColor = '#EF4444';
           phaseIndicator.style.color = '#EF4444';
@@ -1913,9 +1913,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
           var ease = t * (2 - t);
-          rx = 0.25 + ease * 0.50;
-          ry = -1.45 - ease * 1.15;
-          rz = -1.40 - ease * 0.25;
+          rx = -0.20 - ease * 0.45;
+          ry = -1.95 - ease * 0.85;
+          rz = 1.40 + ease * 0.25;
           bodyYaw = 0.85 + ease * 0.20;
           handsX = -0.10 - ease * 0.05;
           phaseLabel = 'SHOULDER WRAP FINISH';
@@ -1924,14 +1924,14 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 0.75 + ease * (0.15 - 0.75);
-          ry = -2.60 + ease * (-0.15 - (-2.60));
-          rz = -1.65 + ease * (0.0 - (-1.65));
+          rx = -0.65 + ease * (0.05 - (-0.65));
+          ry = -2.80 + ease * (0.05 - (-2.80));
+          rz = 1.65 * (1 - ease);
           bodyYaw = 1.05 * (1 - ease);
           pz = -0.08 * (1 - ease);
           px = -0.06 * (1 - ease);
           handsX = -0.15 + ease * (0.12 - (-0.15));
-          handsZ = 0.26 + ease * (0.18 - 0.26);
+          handsZ = 0.30 + ease * (0.14 - 0.30);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else if (shot.indexOf('cut') >= 0) {
@@ -1939,30 +1939,30 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.28) {
           var t = progress / 0.28;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.80 - 0.15);
-          ry = -0.15 + ease * 0.95;
-          rz = ease * 0.95;
+          rx = 0.05 + ease * 0.80; // High hands setup
+          ry = 0.05 + ease * 0.85;
+          rz = -ease * 0.90;
           px = ease * 0.12;
           pz = -ease * 0.08;
           handsX = 0.12 + ease * 0.10;
-          handsY = 1.10 + ease * 0.10;
+          handsY = 0.94 + ease * 0.20;
           phaseLabel = 'BACK & ACROSS SETUP';
           phaseIndicator.style.borderColor = '#A855F7';
           phaseIndicator.style.color = '#A855F7';
         } else if (progress < 0.58) {
           var t = (progress - 0.28) / 0.30;
           var ease = t * t;
-          rx = -0.80 + ease * (0.20 - (-0.80));
-          ry = 0.80 + ease * 0.45;
-          rz = 0.95 + ease * 0.40;
+          rx = 0.85 - ease * 1.00; // Slashes down through point (+X)
+          ry = 0.90 + ease * 0.45;
+          rz = -0.90 + ease * 2.15;
           px = 0.12; pz = -0.08;
           handsX = 0.22 + ease * 0.15;
-          handsZ = 0.10 + ease * 0.16;
+          handsZ = 0.06 + ease * 0.20;
           phaseLabel = 'DESCENDING SLASH THROUGH POINT';
           phaseIndicator.style.borderColor = '#A855F7';
           phaseIndicator.style.color = '#A855F7';
         } else if (progress < 0.68) {
-          rx = 0.20; ry = 1.25; rz = 1.35;
+          rx = -0.15; ry = 1.35; rz = 1.25;
           px = 0.12; pz = -0.08;
           handsX = 0.37; handsZ = 0.26;
           phaseLabel = '⚡ POINT CUT CRACK!';
@@ -1974,9 +1974,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
           var ease = t * (2 - t);
-          rx = 0.20 + ease * 0.75;
-          ry = 1.25 + ease * 0.30;
-          rz = 1.35 - ease * 0.55;
+          rx = -0.15 - ease * 0.65;
+          ry = 1.35 + ease * 0.20;
+          rz = 1.25 - ease * 0.45;
           handsX = 0.37 + ease * 0.08;
           phaseLabel = 'FULL EXTENSION PAST POINT';
           phaseIndicator.style.borderColor = '#A855F7';
@@ -1984,13 +1984,13 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 0.95 + ease * (0.15 - 0.95);
-          ry = 1.55 + ease * (-0.15 - 1.55);
-          rz = 0.80 + ease * (0.0 - 0.80);
+          rx = -0.80 + ease * (0.05 - (-0.80));
+          ry = 1.55 + ease * (0.05 - 1.55);
+          rz = 0.80 * (1 - ease);
           px = 0.12 * (1 - ease);
           pz = -0.08 * (1 - ease);
           handsX = 0.45 + ease * (0.12 - 0.45);
-          handsZ = 0.26 + ease * (0.18 - 0.26);
+          handsZ = 0.26 + ease * (0.14 - 0.26);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else if (shot.indexOf('defen') >= 0) {
@@ -1998,28 +1998,28 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.30) {
           var t = progress / 0.30;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.40 - 0.15);
-          ry = -0.15 + ease * 0.15;
+          rx = 0.05 + ease * 0.40; // Controlled short backlift
+          ry = 0.05 * (1 - ease);
           rz = 0.0;
-          pz = ease * 0.20;
-          handsZ = 0.18 + ease * 0.16;
+          pz = ease * 0.20; // Good stride forward
+          handsZ = 0.14 + ease * 0.12;
           phaseLabel = 'MEASURED STRIDE FORWARD';
           phaseIndicator.style.borderColor = '#E2E8F0';
           phaseIndicator.style.color = '#E2E8F0';
         } else if (progress < 0.58) {
           var t = (progress - 0.30) / 0.28;
           var ease = t;
-          rx = -0.40 + ease * (0.35 - (-0.40));
+          rx = 0.45 - ease * 0.80; // Bat presents dead-bat wall in front of pad to -0.35
           ry = 0.0; rz = 0.0;
           pz = 0.20;
-          handsY = 1.10 - ease * 0.15;
-          handsZ = 0.34 + ease * 0.12;
+          handsY = 0.94 - ease * 0.10;
+          handsZ = 0.26 + ease * 0.18;
           phaseLabel = 'SOFT HANDS BELOW EYES';
           phaseIndicator.style.borderColor = '#E2E8F0';
           phaseIndicator.style.color = '#E2E8F0';
         } else if (progress < 0.85) {
-          rx = 0.35; ry = 0.0; rz = 0.0;
-          pz = 0.20; handsY = 0.95; handsZ = 0.46;
+          rx = -0.35; ry = 0.0; rz = 0.0;
+          pz = 0.20; handsY = 0.84; handsZ = 0.44;
           phaseLabel = '🛡️ SOLID DEFENSIVE WALL';
           phaseIndicator.style.borderColor = '#E2E8F0';
           phaseIndicator.style.color = '#E2E8F0';
@@ -2029,12 +2029,12 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else {
           var t = (progress - 0.85) / 0.15;
           var ease = t * t;
-          rx = 0.35 + ease * (0.15 - 0.35);
-          ry = -0.15 * ease;
+          rx = -0.35 + ease * (0.05 - (-0.35));
+          ry = 0.05 * ease;
           rz = 0.0;
           pz = 0.20 * (1 - ease);
-          handsY = 0.95 + 0.15 * ease;
-          handsZ = 0.46 + ease * (0.18 - 0.46);
+          handsY = 0.84 + 0.10 * ease;
+          handsZ = 0.44 + ease * (0.14 - 0.44);
           phaseLabel = 'HOLD & RETURN';
         }
       } else if (shot.indexOf('sweep') >= 0) {
@@ -2042,32 +2042,32 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.28) {
           var t = progress / 0.28;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.45 - 0.15);
-          ry = -0.15 + ease * 0.60;
-          rz = ease * 0.65;
+          rx = 0.05 + ease * 0.45;
+          ry = 0.05 - ease * 0.60;
+          rz = -ease * 0.65;
           py = -ease * 0.25;
           pz = ease * 0.24;
-          handsY = 1.10 - ease * 0.38;
-          handsZ = 0.18 + ease * 0.18;
+          handsY = 0.94 - ease * 0.35;
+          handsZ = 0.14 + ease * 0.18;
           phaseLabel = 'KNEELING ON TURF';
           phaseIndicator.style.borderColor = '#F97316';
           phaseIndicator.style.color = '#F97316';
         } else if (progress < 0.58) {
           var t = (progress - 0.28) / 0.30;
           var ease = t * t;
-          rx = -0.45 + ease * (0.15 - (-0.45));
-          ry = 0.45 - ease * 1.80;
-          rz = 0.65 - ease * 2.10;
+          rx = 0.50 - ease * 0.65;
+          ry = -0.55 - ease * 1.30;
+          rz = -0.65 + ease * 2.10;
           py = -0.25; pz = 0.24;
           handsX = 0.12 - ease * 0.14;
-          handsZ = 0.36 + ease * 0.10;
+          handsZ = 0.32 + ease * 0.12;
           phaseLabel = 'TURF BROOM SWEEP';
           phaseIndicator.style.borderColor = '#F97316';
           phaseIndicator.style.color = '#F97316';
         } else if (progress < 0.68) {
-          rx = 0.15; ry = -1.35; rz = -1.45;
+          rx = -0.15; ry = -1.85; rz = 1.45;
           py = -0.25; pz = 0.24;
-          handsX = -0.02; handsY = 0.64; handsZ = 0.46;
+          handsX = -0.02; handsY = 0.59; handsZ = 0.44;
           phaseLabel = '⚡ FINE LEG SWEEP!';
           phaseIndicator.style.borderColor = '#F97316';
           phaseIndicator.style.color = '#F97316';
@@ -2077,9 +2077,9 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else if (progress < 0.88) {
           var t = (progress - 0.68) / 0.20;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * 0.40;
-          ry = -1.35 - ease * 0.90;
-          rz = -1.45 - ease * 0.30;
+          rx = -0.15 - ease * 0.40;
+          ry = -1.85 - ease * 0.85;
+          rz = 1.45 + ease * 0.30;
           py = -0.25 * (1 - ease * 0.6);
           phaseLabel = 'SQUARE LEG FINISH';
           phaseIndicator.style.borderColor = '#F97316';
@@ -2087,14 +2087,14 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 0.55 + ease * (0.15 - 0.55);
-          ry = -2.25 + ease * (-0.15 - (-2.25));
-          rz = -1.75 + ease * (0.0 - (-1.75));
+          rx = -0.55 + ease * (0.05 - (-0.55));
+          ry = -2.70 + ease * (0.05 - (-2.70));
+          rz = 1.75 * (1 - ease);
           py = -0.10 * (1 - ease);
           pz = 0.24 * (1 - ease);
           handsX = -0.02 + ease * (0.12 - (-0.02));
-          handsY = 0.64 + ease * (1.10 - 0.64);
-          handsZ = 0.46 + ease * (0.18 - 0.46);
+          handsY = 0.59 + ease * (0.94 - 0.59);
+          handsZ = 0.44 + ease * (0.14 - 0.44);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else if (shot.indexOf('heli') >= 0) {
@@ -2102,28 +2102,28 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
         if (progress < 0.24) {
           var t = progress / 0.24;
           var ease = t * (2 - t);
-          rx = 0.15 + ease * (-0.55 - 0.15);
-          ry = -0.15 + ease * 0.10;
+          rx = 0.05 + ease * 0.60;
+          ry = 0.05 - ease * 0.10;
           rz = 0.0;
           py = -ease * 0.08;
-          handsY = 1.10 - ease * 0.12;
+          handsY = 0.94 - ease * 0.10;
           phaseLabel = 'YORKER BLOCKHOLE CROUCH';
           phaseIndicator.style.borderColor = '#F43F5E';
           phaseIndicator.style.color = '#F43F5E';
         } else if (progress < 0.54) {
           var t = (progress - 0.24) / 0.30;
           var ease = t * t;
-          rx = -0.55 + ease * (0.75 - (-0.55));
-          ry = -0.05 - ease * 0.30;
-          rz = -ease * 0.40;
-          handsY = 0.98 - ease * 0.10;
-          handsZ = 0.18 + ease * 0.28;
+          rx = 0.65 - ease * 1.40; // Digs down to -0.75 in front of toes
+          ry = -0.05 + ease * 0.35;
+          rz = ease * 0.40;
+          handsY = 0.84 - ease * 0.08;
+          handsZ = 0.14 + ease * 0.28;
           phaseLabel = 'DIGGING BLOCKHOLE AT TOES';
           phaseIndicator.style.borderColor = '#F43F5E';
           phaseIndicator.style.color = '#F43F5E';
         } else if (progress < 0.62) {
-          rx = 0.75; ry = -0.35; rz = -0.40;
-          handsX = 0.08; handsY = 0.88; handsZ = 0.46;
+          rx = -0.75; ry = 0.30; rz = 0.40;
+          handsX = 0.08; handsY = 0.76; handsZ = 0.42;
           phaseLabel = '⚡ WRIST-SNAP EXPLOSION!';
           phaseIndicator.style.borderColor = '#F43F5E';
           phaseIndicator.style.color = '#F43F5E';
@@ -2134,29 +2134,29 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
           // The 360-degree helicopter whirl overhead!
           var t = (progress - 0.62) / 0.26;
           var ease = t * (2 - t);
-          rx = 0.75 + ease * 1.50;
-          ry = -0.35 - ease * (Math.PI * 2);
-          rz = -0.40 - ease * 0.80;
-          handsY = 0.88 + ease * 0.35;
-          handsZ = 0.46 - ease * 0.20;
+          rx = -0.75 - ease * 1.50; // Whipping bat up and overhead
+          ry = 0.30 + ease * (Math.PI * 2);
+          rz = 0.40 + ease * 0.80;
+          handsY = 0.76 + ease * 0.45;
+          handsZ = 0.42 - ease * 0.20;
           phaseLabel = '🚁 360° HELICOPTER WHIRL OVERHEAD';
           phaseIndicator.style.borderColor = '#F43F5E';
           phaseIndicator.style.color = '#F43F5E';
         } else {
           var t = (progress - 0.88) / 0.12;
           var ease = t * t;
-          rx = 2.25 + ease * (0.15 - 2.25);
-          ry = (-0.35 - Math.PI * 2) + ease * (-0.15 - (-0.35 - Math.PI * 2));
-          rz = -1.20 + ease * (0.0 - (-1.20));
-          handsY = 1.23 + ease * (1.10 - 1.23);
-          handsZ = 0.26 + ease * (0.18 - 0.26);
+          rx = -2.25 + ease * (0.05 - (-2.25));
+          ry = (0.30 + Math.PI * 2) + ease * (0.05 - (0.30 + Math.PI * 2));
+          rz = 1.20 * (1 - ease);
+          handsY = 1.21 + ease * (0.94 - 1.21);
+          handsZ = 0.22 + ease * (0.14 - 0.22);
           phaseLabel = 'RETURN TO STANCE';
         }
       } else {
         // Fallback generic drive
         var t = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
-        rx = 0.15 + t * 0.8;
-        ry = -0.15 + t * 0.2;
+        rx = 0.05 - t * 0.70;
+        ry = 0.0;
         rz = 0.0;
       }
 
@@ -2480,7 +2480,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
             // Sensor +Y along bat handle (+Y)
             // Sensor +X across bat blade width (+X)
             // Sensor +Z normal away from back spine (-Z)
-            var sx = invertPitch ? -1 : 1;
+            var sx = invertPitch ? 1 : -1;
             var sy = invertRoll ? -1 : 1;
             var sz = invertYaw ? -1 : 1;
 
@@ -2515,7 +2515,7 @@ const VISUALIZER_HTML = `<!DOCTYPE html>
             var rRad = (dRoll * Math.PI) / 180;
             var yRad = (dYaw * Math.PI) / 180;
 
-            var qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -pRad);
+            var qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pRad);
             var qRoll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rRad);
             var qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -yRad);
             var qDeltaBatEuler = new THREE.Quaternion().copy(qYaw).multiply(qPitch).multiply(qRoll);
