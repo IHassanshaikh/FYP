@@ -55,13 +55,13 @@ Vector Bat is a smart cricket bat analysis mobile application that connects to a
   - [x] Headroom clearance framing across portrait and widescreen viewports.
   - [x] Typecheck passes.
 
-- [ ] **US-009: Anatomical 2-Handed Glove Grip & Dynamic Forearm/Elbow Kinematics**
-  - [ ] Top (left) hand wraps firmly around upper handle with knuckles aligned towards off-side/cover.
-  - [ ] Bottom (right) hand holds lower handle with 'V' between thumb and index finger aligned down bat spine.
-  - [ ] Batting gloves feature distinct segmented finger sausage rolls, reinforced thumb guards, and leather palm wrap around rubber grip.
-  - [ ] Forearms and elbows dynamically track glove positions on the handle throughout all swing phases so wrists never disconnect or stretch unnaturally.
-  - [ ] High leading elbow posture maintained during backlift and drive downswing.
-  - [ ] Typecheck passes (`npx tsc --noEmit`).
+- [x] **US-009: Anatomical 2-Handed Glove Grip & Dynamic Forearm/Elbow Kinematics**
+  - [x] Top (left) hand wraps firmly around upper handle with knuckles aligned towards off-side/cover.
+  - [x] Bottom (right) hand holds lower handle with 'V' between thumb and index finger aligned down bat spine.
+  - [x] Batting gloves feature distinct segmented finger sausage rolls, reinforced thumb guards, and leather palm wrap around rubber grip.
+  - [x] Forearms and elbows dynamically track glove positions on the handle throughout all swing phases so wrists never disconnect or stretch unnaturally.
+  - [x] High leading elbow posture maintained during backlift and drive downswing.
+  - [x] Typecheck passes (`npx tsc --noEmit`).
 
 - [ ] **US-010: Authentic Cricket Biomechanics: Footwork, Weight Transfer & Knee Flexion**
   - [ ] Front-Foot Drives (Cover, Straight, On Drive, Defence): Front leg strides forward with 45° bent knee over popping crease; rear foot rises onto toe with heel lifted off turf (authentic back-foot toe drag).

@@ -128,8 +128,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented 3D pro batting gloves with segmented sausage finger rolls, Pittards leather palm, towel cuffs with pull-tabs, and continuous 2-bone arm IK locking forearms and elbows to handle."
     },
     {
       "id": "US-010",

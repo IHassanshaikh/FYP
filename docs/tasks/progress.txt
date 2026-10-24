@@ -53,3 +53,19 @@ Started: Sat Oct 24 2026
 - Realigned hardware sensor pitch inversion in `setLiveOrientation` so physical forward pitch tilts the bat forward towards the bowler.
 - Verification: `npx tsc --noEmit` passed with 0 errors. Committed as `c5cdb0d`.
 ---
+
+## 2026-10-25 - US-009: Anatomical 2-Handed Glove Grip & Dynamic Forearm/Elbow Kinematics
+- **Pro 3D Batting Gloves:** Built dedicated multi-part batting gloves (`buildProCricketGlove`):
+  - 4 articulated sausage/shark-tooth finger rolls wrapping tightly around the cylindrical rubber chevron grip.
+  - Two-piece angled rigid thumb guard protecting against fast-bowling impacts.
+  - Soft white Pittards leather palm lining the inner handle contact surface.
+  - Elasticated towel wristband cuffs with rubber pull-tabs in VectorBat emerald.
+  - Top (left) hand attached at y = 0.20 with knuckles facing off-side; bottom (right) hand attached at y = 0.075 with thumb-index 'V' aligned down the back spine.
+- **Continuous 2-Bone Arm Inverse Kinematics (IK):**
+  - Shoulders at `(±0.042, 1.30, z)` connect to elbows (`lElbow`, `rElbow`), and forearms connect to the wrist cuffs on the bat handle.
+  - Front left arm maintains a high leading elbow pointing towards the bowler/cover.
+  - Rear right arm tucks into the ribs for soft-hands control.
+  - Solved cylinder scale alignment bug (`boneMesh.scale.set(1, len, 1)`) so arms remain anatomically proportioned throughout 360° swings.
+  - Wrists never disconnect, stretch, or float away from the bat in stance, demo strokes, or live sensor motion.
+- **Verification:** `npx tsc --noEmit` passed with 0 errors. Verified in live browser canvas. Committed as `4a274d1`.
+---
