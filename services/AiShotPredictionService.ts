@@ -32,9 +32,11 @@ export interface VisionClassifyResult {
   zone: string;
   isMiddled: boolean;
   sweetSpotScore: number;
+  contactZone: 'Pure Sweet Spot' | 'Inside Edge' | 'Outside Edge' | 'Toe of Bat' | 'Splice / Handle';
   estimatedSpeedKmh: number;
   contactPoint: { x: number; y: number };
   coachingVerdict: string;
+  probabilities: Record<string, number>;
 }
 
 class AiShotPredictionService {
@@ -276,7 +278,15 @@ Output JSON only:
    * Directly classifies raw 32x32 RGB frame pixels using the trained Softmax Vision model
    * and computes sweet spot alignment & point of contact
    */
-  public classifyImagePixels(pixels32x32: Uint8ClampedArray | number[]): VisionClassifyResult {
+  /**
+   * Directly classifies raw 32x32 RGB frame pixels using the trained Softmax Vision model
+   * and computes sweet spot alignment & point of contact
+   */
+  public classifyImagePixels(
+    pixels32x32: Uint8ClampedArray | number[],
+    detectedContact?: { x: number; y: number },
+    opticalSpeedEstimate?: number
+  ): VisionClassifyResult {
     const classes: string[] = (trainedModel as any).classes || ['drive', 'legglance-flick', 'pullshot', 'sweep'];
     const weights: number[][] = (trainedModel as any).weights || [];
     const intercepts: number[] = (trainedModel as any).intercepts || [];
@@ -297,9 +307,9 @@ Output JSON only:
 
     let pIdx = 0;
     for (let i = 0; i < 1024; i++) {
-      const r = pixels32x32[pIdx] / 255.0;
-      const g = pixels32x32[pIdx + 1] / 255.0;
-      const b = pixels32x32[pIdx + 2] / 255.0;
+      const r = (pixels32x32[pIdx] || 0) / 255.0;
+      const g = (pixels32x32[pIdx + 1] || 0) / 255.0;
+      const b = (pixels32x32[pIdx + 2] || 0) / 255.0;
       pIdx += 4; // Step RGBA
 
       features[i * 3] = r;
@@ -350,9 +360,11 @@ Output JSON only:
     });
     const probs = exps.map((e) => e / sumExp);
 
+    const probRecord: Record<string, number> = {};
     let bestIdx = 0;
     let highestProb = 0;
     for (let c = 0; c < probs.length; c++) {
+      probRecord[classes[c]] = Math.round(probs[c] * 100);
       if (probs[c] > highestProb) {
         highestProb = probs[c];
         bestIdx = c;
@@ -361,38 +373,67 @@ Output JSON only:
 
     const predictedClass = classes[bestIdx] || 'drive';
     const shotName = labels[predictedClass] || 'Cover Drive';
-    const confidence = Math.min(98, Math.max(76, Math.round(highestProb * 100)));
+    const confidence = Math.min(99, Math.max(52, Math.round(highestProb * 100)));
 
     // 4. Optical Analysis of Batsman Stance & Ball-Bat Middle Accuracy
-    // Locate the highest contrast contact point between bat blade & ball
-    let minBrightness = 1.0;
-    let minPos = { x: 0.5, y: 0.55 };
+    // Locate the contact point between bat blade & ball if not supplied
+    let contactPos = detectedContact;
+    if (!contactPos) {
+      let minBrightness = 1.0;
+      let minPos = { x: 0.50, y: 0.55 };
 
-    for (let r = 8; r < 28; r++) {
-      for (let c = 8; c < 28; c++) {
-        const val = grayGrid[r][c];
-        if (val < minBrightness) {
-          minBrightness = val;
-          minPos = { x: c / 32.0, y: r / 32.0 };
+      for (let r = 6; r < 28; r++) {
+        for (let c = 6; c < 28; c++) {
+          const val = grayGrid[r][c];
+          if (val < minBrightness) {
+            minBrightness = val;
+            minPos = { x: c / 32.0, y: r / 32.0 };
+          }
         }
       }
+      contactPos = minPos;
     }
 
-    // Ideal sweet spot zone for cricket strokes is center-blade (0.45-0.58 X, 0.48-0.65 Y)
-    const distFromSweetSpot = Math.sqrt(
-      Math.pow(minPos.x - 0.50, 2) + Math.pow(minPos.y - 0.56, 2)
-    );
-    const sweetSpotScore = Math.min(98, Math.max(62, Math.round(96 - distFromSweetSpot * 160)));
-    const isMiddled = sweetSpotScore >= 78;
+    // Cricket blade sweet spot is centered horizontally (x ≈ 0.50) and lower-middle vertically (y ≈ 0.56)
+    const dx = Math.abs(contactPos.x - 0.50);
+    const dy = Math.abs(contactPos.y - 0.56);
+
+    // Dynamic middling score: decreases as contact moves laterally towards edge or vertically towards toe/splice
+    const rawPenalty = dx * 240 + dy * 130;
+    const sweetSpotScore = Math.max(18, Math.min(97, Math.round(97 - rawPenalty)));
+    const isMiddled = sweetSpotScore >= 76;
+
+    // Contact Zone Taxonomy
+    let contactZone: 'Pure Sweet Spot' | 'Inside Edge' | 'Outside Edge' | 'Toe of Bat' | 'Splice / Handle' = 'Pure Sweet Spot';
+    if (isMiddled) {
+      contactZone = 'Pure Sweet Spot';
+    } else if (dx > 0.07 && contactPos.x > 0.50) {
+      contactZone = 'Outside Edge';
+    } else if (dx > 0.07 && contactPos.x < 0.50) {
+      contactZone = 'Inside Edge';
+    } else if (contactPos.y > 0.65) {
+      contactZone = 'Toe of Bat';
+    } else {
+      contactZone = 'Splice / Handle';
+    }
 
     const bio = shotMap[predictedClass] || { typicalSpeedRange: [80, 95], zone: 'Off Side' };
-    const speed = Math.round(
-      bio.typicalSpeedRange[0] + (bio.typicalSpeedRange[1] - bio.typicalSpeedRange[0]) * 0.7
+    const speed = opticalSpeedEstimate || Math.round(
+      bio.typicalSpeedRange[0] + (bio.typicalSpeedRange[1] - bio.typicalSpeedRange[0]) * (0.6 + (highestProb * 0.35))
     );
 
-    const coachingVerdict = isMiddled
-      ? `Pure Middle (${sweetSpotScore}%): Perfect center-blade impact for a ${shotName}. Excellent elbow high-flow.`
-      : `Off-Center / Edge (${sweetSpotScore}%): Struck towards blade splice. Adjust head over ball for cleaner contact.`;
+    let coachingVerdict = '';
+    if (contactZone === 'Pure Sweet Spot') {
+      coachingVerdict = `Pure Middle (${sweetSpotScore}%): Centered impact in the sweet-spot zone for a ${shotName}. Outstanding high elbow presentation.`;
+    } else if (contactZone === 'Outside Edge') {
+      coachingVerdict = `Outside Edge (${sweetSpotScore}%): Struck on the outer half of the blade. Head fell away slightly outside the line.`;
+    } else if (contactZone === 'Inside Edge') {
+      coachingVerdict = `Inside Edge (${sweetSpotScore}%): Contact close to inside line. Ensure front foot doesn't plant across the off stump.`;
+    } else if (contactZone === 'Toe of Bat') {
+      coachingVerdict = `Toe of Bat (${sweetSpotScore}%): Struck low near the bottom edge. Ball pitched fuller than expected; bend front knee further.`;
+    } else {
+      coachingVerdict = `Splice / Jammed (${sweetSpotScore}%): Ball hit high on the blade near handle. Ball climbed into ribcage on the upswing.`;
+    }
 
     return {
       shotName,
@@ -401,9 +442,11 @@ Output JSON only:
       zone: bio.zone || 'Off Side',
       isMiddled,
       sweetSpotScore,
+      contactZone,
       estimatedSpeedKmh: speed,
-      contactPoint: minPos,
+      contactPoint: contactPos,
       coachingVerdict,
+      probabilities: probRecord,
     };
   }
 }

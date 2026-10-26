@@ -252,44 +252,52 @@ export default function PracticeScreen() {
   const analyzeCurrentCameraShot = async () => {
     if (Platform.OS === 'web' && videoRef.current) {
       const vid = videoRef.current;
+      const w = vid.videoWidth || 320;
+      const h = vid.videoHeight || 240;
       const snapshotCanvas = document.createElement('canvas');
-      snapshotCanvas.width = vid.videoWidth || 320;
-      snapshotCanvas.height = vid.videoHeight || 240;
+      snapshotCanvas.width = w;
+      snapshotCanvas.height = h;
       const sCtx = snapshotCanvas.getContext('2d');
       if (sCtx) {
-        sCtx.drawImage(vid, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
+        sCtx.drawImage(vid, 0, 0, w, h);
         
-        // Draw impact marker
-        const impactX = snapshotCanvas.width * 0.52;
-        const impactY = snapshotCanvas.height * 0.58;
-        sCtx.strokeStyle = '#00E676';
+        // Get 32x32 thumbnail for ML model
+        const mlCanvas = document.createElement('canvas');
+        mlCanvas.width = 32;
+        mlCanvas.height = 32;
+        const mlCtx = mlCanvas.getContext('2d');
+        let pixels32: Uint8ClampedArray | null = null;
+        if (mlCtx) {
+          mlCtx.drawImage(vid, 0, 0, 32, 32);
+          pixels32 = mlCtx.getImageData(0, 0, 32, 32).data;
+        }
+
+        const visionRes = pixels32
+          ? aiShotPredictionService.classifyImagePixels(pixels32)
+          : null;
+
+        const impactX = w * (visionRes?.contactPoint.x || 0.52);
+        const impactY = h * (visionRes?.contactPoint.y || 0.56);
+        const isMid = visionRes?.isMiddled ?? true;
+
+        sCtx.strokeStyle = isMid ? '#00E676' : '#FF9100';
         sCtx.lineWidth = 3;
         sCtx.beginPath();
         sCtx.arc(impactX, impactY, 26, 0, 2 * Math.PI);
         sCtx.stroke();
-        sCtx.fillStyle = 'rgba(0, 230, 118, 0.25)';
+        sCtx.fillStyle = isMid ? 'rgba(0, 230, 118, 0.25)' : 'rgba(255, 145, 0, 0.25)';
         sCtx.fill();
 
         const snapshotUri = snapshotCanvas.toDataURL('image/jpeg', 0.85);
-        const pred = await aiShotPredictionService.predictShot({
-          batSpeedKmh: 86,
-          liftAngleDeg: 54,
-          impactG: 82,
-          sweetSpotScore: 88,
-          timingIndex: 92,
-          pitch: -15,
-          roll: 10,
-          yaw: 28,
-        });
 
         setDetectedVisionShot({
-          shotName: pred.predictedShot,
-          confidence: pred.confidence,
-          zone: pred.zone,
-          isMiddled: true,
-          sweetSpotScore: 88,
+          shotName: visionRes?.shotName || 'Cover Drive',
+          confidence: visionRes?.confidence || 85,
+          zone: visionRes?.zone || 'Off Side / Cover',
+          isMiddled: isMid,
+          sweetSpotScore: visionRes?.sweetSpotScore || 82,
           impactSnapshotUri: snapshotUri,
-          analysisNote: 'Ball Middle: YES - Pure sweet spot impact with optimal blade face angle.',
+          analysisNote: visionRes?.coachingVerdict || 'Ball Middle: Pure sweet spot impact with optimal blade face angle.',
         });
       }
     }
