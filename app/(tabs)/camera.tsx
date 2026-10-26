@@ -648,11 +648,13 @@ export default function CameraAnalysisScreen() {
 
       // Find frame of peak deceleration
       let maxScore = -1;
-      let bestPocIdx = Math.floor(rawFrames.length * 0.5);
+      let bestPocIdx = Math.max(0, Math.floor(rawFrames.length * 0.5));
 
       for (let i = 2; i < rawFrames.length - 2; i++) {
-        const curr = rawFrames[i].motionScore;
-        const impulse = curr * 1.6 - (rawFrames[i - 1].motionScore + rawFrames[i + 1].motionScore) * 0.45;
+        const curr = rawFrames[i]?.motionScore || 0;
+        const prevMotion = rawFrames[i - 1]?.motionScore || 0;
+        const nextMotion = rawFrames[i + 1]?.motionScore || 0;
+        const impulse = curr * 1.6 - (prevMotion + nextMotion) * 0.45;
         const score = curr * 0.5 + impulse * 0.4;
         if (score > maxScore) {
           maxScore = score;
@@ -660,8 +662,23 @@ export default function CameraAnalysisScreen() {
         }
       }
 
-      const pocFrame = rawFrames[bestPocIdx];
-      await processContactFrame(pocFrame.canvas, 82, 36.4, 'OPTICAL_DELIVERY_SCAN');
+      let pocCanvas: HTMLCanvasElement | null = rawFrames[bestPocIdx]?.canvas || null;
+
+      // Fallback if rawFrames was empty or uncaptured
+      if (!pocCanvas && videoRef.current) {
+        const fallbackCanvas = document.createElement('canvas');
+        fallbackCanvas.width = vid.videoWidth || 640;
+        fallbackCanvas.height = vid.videoHeight || 480;
+        const fctx = fallbackCanvas.getContext('2d');
+        if (fctx) fctx.drawImage(vid, 0, 0, fallbackCanvas.width, fallbackCanvas.height);
+        pocCanvas = fallbackCanvas;
+      }
+
+      if (pocCanvas) {
+        await processContactFrame(pocCanvas, 82, 36.4, 'OPTICAL_DELIVERY_SCAN');
+      } else {
+        setIsAnalyzingDelivery(false);
+      }
     } else {
       // Mobile
       setIsRecordingDelivery(true);
@@ -714,6 +731,24 @@ export default function CameraAnalysisScreen() {
     } else {
       setIsSessionActive(false);
     }
+  };
+
+  // Instant Test Impact Trigger (allows testing the full pipeline even when ESP32 is offline)
+  const triggerTestImpactShot = () => {
+    hardwareSensorService.notifyImpactListeners({
+      timestamp: Date.now(),
+      peakG: parseFloat((2.8 + Math.random() * 2.5).toFixed(1)),
+      batSpeedKmh: Math.floor(76 + Math.random() * 28),
+      sensorData: {
+        accel: { x: 0.1, y: 1.5, z: 2.8 },
+        gyro: { x: 100, y: 40, z: 75 },
+        impactG: 3.5,
+        magG: 3.2,
+        speedKmh: 88,
+        shotType: 'Drive',
+        timestamp: Date.now(),
+      } as any,
+    });
   };
 
   const isSensorConnected = sensorState.state === 'connected';
@@ -816,19 +851,30 @@ export default function CameraAnalysisScreen() {
           </Text>
         </View>
 
-        <Pressable
-          style={[styles.sessionActionBtn, isSessionActive ? styles.endSessionBtn : styles.startSessionBtn]}
-          onPress={toggleSession}
-        >
-          <Ionicons
-            name={isSessionActive ? 'stop' : 'play'}
-            size={18}
-            color="#000000"
-          />
-          <Text style={styles.sessionActionBtnText}>
-            {isSessionActive ? 'END SESSION' : 'START SESSION'}
-          </Text>
-        </Pressable>
+        <View style={styles.sessionBtnRow}>
+          <Pressable
+            style={[styles.sessionActionBtn, isSessionActive ? styles.endSessionBtn : styles.startSessionBtn]}
+            onPress={toggleSession}
+          >
+            <Ionicons
+              name={isSessionActive ? 'stop' : 'play'}
+              size={18}
+              color="#000000"
+            />
+            <Text style={styles.sessionActionBtnText}>
+              {isSessionActive ? 'END SESSION' : 'START SESSION'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.testImpactBtn}
+            onPress={triggerTestImpactShot}
+            disabled={isAnalyzingDelivery}
+          >
+            <Ionicons name="flash" size={16} color="#000000" />
+            <Text style={styles.testImpactBtnText}>TEST IMPACT</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* ═══════════════════════════════════════════════════════════ */}
@@ -942,12 +988,21 @@ export default function CameraAnalysisScreen() {
                   >
                     <Ionicons
                       name={isRecordingDelivery ? 'stop-circle' : 'videocam'}
-                      size={18}
+                      size={16}
                       color="#000000"
                     />
                     <Text style={styles.hudRecordBtnText}>
-                      {isRecordingDelivery ? 'RECORDING...' : 'RECORD DELIVERY BALL (2.6s)'}
+                      {isRecordingDelivery ? 'REC...' : 'RECORD BALL'}
                     </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.hudTestBtn}
+                    onPress={triggerTestImpactShot}
+                    disabled={isAnalyzingDelivery}
+                  >
+                    <Ionicons name="flash" size={16} color="#000000" />
+                    <Text style={styles.hudTestBtnText}>TEST IMPACT</Text>
                   </Pressable>
                 </View>
 
@@ -1284,6 +1339,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
   },
+  sessionBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   sessionActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1299,6 +1360,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
   sessionActionBtnText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  testImpactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDE047',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#EAB308',
+  },
+  testImpactBtnText: {
     color: '#000000',
     fontSize: 12,
     fontWeight: '800',
@@ -1437,21 +1514,37 @@ const styles = StyleSheet.create({
   },
 
   hudBottomRow: {
+    flexDirection: 'row',
     alignSelf: 'center',
+    gap: 8,
   },
   hudRecordBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#00E676',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 18,
-    gap: 6,
+    gap: 5,
   },
   hudRecordBtnActive: {
     backgroundColor: '#EF4444',
   },
   hudRecordBtnText: {
+    color: '#000000',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  hudTestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDE047',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    gap: 5,
+  },
+  hudTestBtnText: {
     color: '#000000',
     fontSize: 11,
     fontWeight: '800',
