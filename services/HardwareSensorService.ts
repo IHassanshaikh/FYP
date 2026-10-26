@@ -346,6 +346,23 @@ export class HardwareSensorService {
       // --- CRICKET SWING DETECTION & COMPLETION STATE MACHINE ---
       const timeSinceLastShot = now - this.lastShotCompletedTime;
 
+      // Immediate Hardware ADXL Impact Shock Detection:
+      // Fires at the exact millisecond the accelerometer registers willow compression,
+      // allowing the camera to capture the ball on the bat with zero lag.
+      const isInstantAdxlImpact = (magG > 2.2 || data.impact.peakImpact_g > 2.2) && timeSinceLastShot > 350;
+      if (isInstantAdxlImpact) {
+        this.lastImpactTime = now;
+        this.lastShotCompletedTime = now;
+        const impactSpeed = Math.max(16, Math.round(Math.max(this.peakSpeedKmh, currentBatSpeedKmh)));
+        this.notifyImpactListeners({
+          timestamp: now,
+          peakG: Math.round(Math.max(magG, data.impact.peakImpact_g) * 10) / 10,
+          batSpeedKmh: impactSpeed,
+          sensorData: data,
+        });
+        this.detectRealImpact(data, magG);
+      }
+
       // 1. SWING ONSET TRIGGER:
       // Catches real stroke acceleration through space (requires dynamic centripetal G + velocity)
       // Turning or reorienting the sensor slowly in hands/desk produces zero dynamic G and will NOT falsely trigger
@@ -427,7 +444,7 @@ export class HardwareSensorService {
         const isTimeout = swingAge > 2000;
 
         if (isBallImpact || isDownsideComplete || isDecelComplete || isTimeout) {
-          if (this.peakSpeedKmh >= 12 || this.swingPeakG > 2.0) {
+          if ((this.peakSpeedKmh >= 12 || this.swingPeakG > 2.0) && now - this.lastImpactTime > 350) {
             this.lastImpactTime = now;
             this.lastShotCompletedTime = now;
             this.notifyImpactListeners({
