@@ -596,7 +596,7 @@ export function ThreeSwingView({
         />
       ) : (
         <WebView
-          ref={webViewRef}
+          ref={webViewRef as any}
           originWhitelist={['*']}
           source={{ html: HTML_CONTENT }}
           style={styles.webview}

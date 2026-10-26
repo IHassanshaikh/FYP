@@ -2814,13 +2814,13 @@ export const LiveSwingVisualizer = forwardRef<LiveSwingVisualizerRef, LiveSwingV
           />
         ) : (
           <WebView
-            ref={webViewRef}
+            ref={webViewRef as any}
             originWhitelist={['*']}
             source={{ html: VISUALIZER_HTML }}
             style={styles.webview}
             scrollEnabled={false}
             javaScriptEnabled={true}
-            onMessage={(e) => handleMessageFromCanvas(e.nativeEvent.data)}
+            onMessage={(e: any) => handleMessageFromCanvas(e.nativeEvent.data)}
           />
         )}
       </View>

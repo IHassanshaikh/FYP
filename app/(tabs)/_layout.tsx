@@ -47,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} />
           ),
           headerTitle: () => (
             <Image
@@ -116,7 +116,7 @@ export default function TabLayout() {
         options={{
           title: 'Sessions',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color as string} />
           ),
           headerTitle: 'SESSIONS',
           headerTitleStyle: { color: p.textPrimary, fontWeight: 'bold', letterSpacing: 1 },
@@ -138,10 +138,21 @@ export default function TabLayout() {
               justifyContent: 'center',
               marginBottom: 4,
             }}>
-              <Ionicons name="radio-button-on" size={20} color={focused ? '#FFFFFF' : color} />
+              <Ionicons name="radio-button-on" size={20} color={focused ? '#FFFFFF' : (color as string)} />
             </View>
           ),
           headerTitle: 'LIVE PRACTICE',
+          headerTitleStyle: { color: p.textPrimary, fontWeight: 'bold', letterSpacing: 1 },
+        }}
+      />
+      <Tabs.Screen
+        name="camera"
+        options={{
+          title: 'AI Camera',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'videocam' : 'videocam-outline'} size={24} color={focused ? '#00E676' : (color as string)} />
+          ),
+          headerTitle: 'AI CAMERA SHOT DETECTOR',
           headerTitleStyle: { color: p.textPrimary, fontWeight: 'bold', letterSpacing: 1 },
         }}
       />
@@ -150,7 +161,7 @@ export default function TabLayout() {
         options={{
           title: 'Compare',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={22} color={color as string} />
           ),
           headerTitle: 'COMPARE',
           headerTitleStyle: { color: p.textPrimary, fontWeight: 'bold', letterSpacing: 1 },
@@ -161,7 +172,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color as string} />
           ),
           headerTitle: 'PROFILE',
           headerTitleStyle: { color: p.textPrimary, fontWeight: 'bold', letterSpacing: 1 },

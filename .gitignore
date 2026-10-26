@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Large training dataset & raw model archives (>3.4 GB)
+data/
+*.zip
