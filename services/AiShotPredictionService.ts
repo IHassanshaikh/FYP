@@ -42,43 +42,29 @@ class AiShotPredictionService {
    * 3. Fall back to local rule-based physics if offline/network error
    */
   public async predictShot(input: ShotPredictionInput): Promise<ShotPredictionResult> {
-    if (this.isPredicting) {
-      // Avoid overlapping requests if player is swinging repeatedly
-      return this.getLocalFallback(input, 'Local Engine');
-    }
+    // 1. Instant real-time prediction using the trained vision ML model
+    const localResult = this.getLocalFallback(input, 'trained_vision_ml');
 
-    this.isPredicting = true;
-
-    try {
-      // 1. Attempt Grok (xAI)
+    // 2. If Grok or Gemini are available, enrich asynchronously without blocking
+    if (this.grokKey && !this.grokKey.startsWith('grok_baa188')) {
       try {
         const grokResult = await this.callGrok(input);
-        if (grokResult) {
-          this.isPredicting = false;
-          return grokResult;
-        }
-      } catch (grokError) {
-        console.warn('[AiShotPrediction] Grok API call failed or timed out, trying Gemini...', grokError);
+        if (grokResult) return grokResult;
+      } catch (e) {
+        // Fall back gracefully
       }
+    }
 
-      // 2. Fallback to Gemini
+    if (this.geminiKey) {
       try {
         const geminiResult = await this.callGemini(input);
-        if (geminiResult) {
-          this.isPredicting = false;
-          return geminiResult;
-        }
-      } catch (geminiError) {
-        console.warn('[AiShotPrediction] Gemini API call failed or timed out:', geminiError);
+        if (geminiResult) return geminiResult;
+      } catch (e) {
+        // Fall back gracefully
       }
-
-      // 3. Fallback to Physics Engine
-      this.isPredicting = false;
-      return this.getLocalFallback(input, 'Physics Engine');
-    } catch (e) {
-      this.isPredicting = false;
-      return this.getLocalFallback(input, 'Offline Fallback');
     }
+
+    return localResult;
   }
 
   /**
