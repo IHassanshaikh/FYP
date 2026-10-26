@@ -10,9 +10,17 @@ export interface ConnectionInfo {
   packetCount: number;
 }
 
+export interface HardwareImpactEvent {
+  timestamp: number;
+  peakG: number;
+  batSpeedKmh: number;
+  sensorData: SensorData;
+}
+
 export class HardwareSensorService {
   private listeners: ((data: SensorData) => void)[] = [];
   private shotListeners: ((shot: ProcessedShotData) => void)[] = [];
+  private impactListeners: ((event: HardwareImpactEvent) => void)[] = [];
   private connectionListeners: ((connected: boolean) => void)[] = [];
   private stateListeners: ((info: ConnectionInfo) => void)[] = [];
 
@@ -422,6 +430,12 @@ export class HardwareSensorService {
           if (this.peakSpeedKmh >= 12 || this.swingPeakG > 2.0) {
             this.lastImpactTime = now;
             this.lastShotCompletedTime = now;
+            this.notifyImpactListeners({
+              timestamp: now,
+              peakG: this.swingPeakG,
+              batSpeedKmh: Math.round(this.peakSpeedKmh),
+              sensorData: data,
+            });
             this.detectRealImpact(data, this.swingPeakG);
           }
           this.isSwingActive = false;
@@ -579,6 +593,18 @@ export class HardwareSensorService {
 
   public emitProcessedShot(shot: ProcessedShotData) {
     this.shotListeners.forEach((l) => l(shot));
+  }
+
+  public addImpactListener(listener: (event: HardwareImpactEvent) => void) {
+    this.impactListeners.push(listener);
+  }
+
+  public removeImpactListener(listener: (event: HardwareImpactEvent) => void) {
+    this.impactListeners = this.impactListeners.filter((l) => l !== listener);
+  }
+
+  public notifyImpactListeners(event: HardwareImpactEvent) {
+    this.impactListeners.forEach((l) => l(event));
   }
 
   public addConnectionListener(listener: (connected: boolean) => void) {
