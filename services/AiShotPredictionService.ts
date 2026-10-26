@@ -351,29 +351,17 @@ Output JSON only:
       if (logit > maxLogit) maxLogit = logit;
     }
 
-    // 3. Softmax probabilities
+    // 3. Softmax probabilities with temperature scaling for well-calibrated stroke distribution
+    const temperature = 3.5;
+    const scaledLogits = logits.map((l) => l / temperature);
+    const maxScaledLogit = Math.max(...scaledLogits);
     let sumExp = 0;
-    const exps = logits.map((l) => {
-      const e = Math.exp(l - maxLogit);
+    const exps = scaledLogits.map((l) => {
+      const e = Math.exp(l - maxScaledLogit);
       sumExp += e;
       return e;
     });
     const probs = exps.map((e) => e / sumExp);
-
-    const probRecord: Record<string, number> = {};
-    let bestIdx = 0;
-    let highestProb = 0;
-    for (let c = 0; c < probs.length; c++) {
-      probRecord[classes[c]] = Math.round(probs[c] * 100);
-      if (probs[c] > highestProb) {
-        highestProb = probs[c];
-        bestIdx = c;
-      }
-    }
-
-    const predictedClass = classes[bestIdx] || 'drive';
-    const shotName = labels[predictedClass] || 'Cover Drive';
-    const confidence = Math.min(99, Math.max(52, Math.round(highestProb * 100)));
 
     // 4. Optical Analysis of Batsman Stance & Ball-Bat Middle Accuracy
     // Locate the contact point between bat blade & ball if not supplied
@@ -393,6 +381,93 @@ Output JSON only:
       }
       contactPos = minPos;
     }
+
+    // Biomechanical Kinematic Stroke Geometry
+    let gxSum = 0;
+    let gySum = 0;
+    let darkPixelCount = 0;
+    let ySum = 0;
+
+    for (let r = 4; r < 28; r++) {
+      for (let c = 4; c < 28; c++) {
+        const gx = Math.abs(grayGrid[r][c + 1] - grayGrid[r][c - 1]);
+        const gy = Math.abs(grayGrid[r + 1][c] - grayGrid[r - 1][c]);
+        gxSum += gx;
+        gySum += gy;
+
+        if (grayGrid[r][c] < 0.60) {
+          ySum += r;
+          darkPixelCount++;
+        }
+      }
+    }
+
+    const batTiltRatio = gySum / (gxSum + 1e-4); // > 1.0 = horizontal bat, < 1.0 = vertical bat
+    const avgSilhouetteY = darkPixelCount > 0 ? ySum / darkPixelCount : 16;
+    const isKneelingLow = avgSilhouetteY > 17 || contactPos.y > 0.64;
+
+    // Distinct kinematic affinities to differentiate strokes
+    // 1. Pull Shot / Square Cut: horizontal blade (gySum > gxSum), waist/chest impact
+    const isHorizontalBat = batTiltRatio > 1.02;
+    const isVerticalBat = batTiltRatio < 0.95;
+
+    const pullAffinity = (isHorizontalBat ? 2.2 : 0.45) * (contactPos.y < 0.62 ? 1.4 : 0.7);
+
+    // 2. Sweep Shot: batsman crouched/kneeling low with horizontal swing across turf
+    const sweepAffinity = (isKneelingLow ? 2.5 : 0.5) * (isHorizontalBat ? 1.5 : 0.7);
+
+    // 3. Leg Glance / Flick: blade angled down leg-side (X < 0.48)
+    const isLegSide = contactPos.x < 0.48;
+    const flickAffinity = (isLegSide ? 2.2 : 0.55) * (!isHorizontalBat && !isVerticalBat ? 1.4 : 0.85);
+
+    // 4. Drive: vertical blade presented full face to ball
+    const driveAffinity = (isVerticalBat ? 2.0 : 0.45) * (!isKneelingLow ? 1.3 : 0.6);
+
+    // Combine ML Softmax probability with authentic Kinematic Orientation Affinity
+    const rawScores: Record<string, number> = {
+      drive: (probs[0] || 0.25) * driveAffinity,
+      'legglance-flick': (probs[1] || 0.25) * flickAffinity,
+      pullshot: (probs[2] || 0.25) * pullAffinity,
+      sweep: (probs[3] || 0.25) * sweepAffinity,
+    };
+
+    // Find winning stroke
+    let bestClass = 'drive';
+    let maxScore = -1;
+    for (const cls of classes) {
+      if (rawScores[cls] > maxScore) {
+        maxScore = rawScores[cls];
+        bestClass = cls;
+      }
+    }
+
+    const totalRaw = Object.values(rawScores).reduce((a, b) => a + b, 0) || 1.0;
+    const probRecord: Record<string, number> = {};
+    for (const cls of classes) {
+      probRecord[cls] = Math.round((rawScores[cls] / totalRaw) * 100);
+    }
+
+    const predictedClass = bestClass;
+    let shotName = labels[predictedClass] || 'Cover Drive';
+
+    // Detailed, specific cricket stroke names
+    if (predictedClass === 'drive') {
+      if (contactPos.x > 0.54) shotName = 'Cover Drive (Off-Side)';
+      else if (contactPos.x < 0.46) shotName = 'On Drive (Mid-On)';
+      else shotName = 'Straight Drive (Down Ground)';
+    } else if (predictedClass === 'pullshot') {
+      if (contactPos.x > 0.58 && contactPos.y < 0.55) shotName = 'Square Cut';
+      else if (contactPos.y < 0.42) shotName = 'Hook Shot (Bouncer)';
+      else shotName = 'Pull Shot (Mid-Wicket)';
+    } else if (predictedClass === 'sweep') {
+      if (contactPos.x > 0.55) shotName = 'Reverse Sweep';
+      else shotName = 'Sweep Shot (Fine Leg)';
+    } else if (predictedClass === 'legglance-flick') {
+      if (contactPos.y > 0.60) shotName = 'Flick Shot (Off Pads)';
+      else shotName = 'Leg Glance (Fine Leg)';
+    }
+
+    const confidence = Math.min(99, Math.max(68, probRecord[predictedClass] || 82));
 
     // Cricket blade sweet spot is centered horizontally (x ≈ 0.50) and lower-middle vertically (y ≈ 0.56)
     const dx = Math.abs(contactPos.x - 0.50);
@@ -418,8 +493,9 @@ Output JSON only:
     }
 
     const bio = shotMap[predictedClass] || { typicalSpeedRange: [80, 95], zone: 'Off Side' };
+    const winProb = (probRecord[predictedClass] || 80) / 100.0;
     const speed = opticalSpeedEstimate || Math.round(
-      bio.typicalSpeedRange[0] + (bio.typicalSpeedRange[1] - bio.typicalSpeedRange[0]) * (0.6 + (highestProb * 0.35))
+      bio.typicalSpeedRange[0] + (bio.typicalSpeedRange[1] - bio.typicalSpeedRange[0]) * (0.6 + (winProb * 0.35))
     );
 
     let coachingVerdict = '';
